@@ -188,7 +188,7 @@ class ProductionTrackingAPITester:
         """Test QR code generation"""
         print("\n📱 Testing QR Code Generation...")
         
-        manager_token = self.tokens.get("manager1")
+        manager_token = self.tokens.get("tunaerdiguven")
         test_part = self.test_data.get("test_part")
         
         if not manager_token or not test_part:
