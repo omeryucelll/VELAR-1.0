@@ -578,6 +578,7 @@ const Projects = () => {
   const [loading, setLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState('');
   const [newPartNumber, setNewPartNumber] = useState('');
+  const [newProjectName, setNewProjectName] = useState('');
 
   useEffect(() => {
     fetchProjects();
