@@ -83,12 +83,16 @@ const Login = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-800 flex items-center justify-center p-4">
       <Card className="w-full max-w-md bg-white/10 backdrop-blur-lg border-white/20">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 p-3 bg-blue-600/20 rounded-full w-fit">
-            <Factory className="h-8 w-8 text-blue-400" />
+          <div className="mx-auto mb-4 p-3 bg-white/10 rounded-full w-fit">
+            <img 
+              src="https://customer-assets.emergentagent.com/job_metalops/artifacts/i1dybgg7_Velar%20Makine%20Logo%20SVG.png" 
+              alt="Velar Makine Logo" 
+              className="h-12 w-12 object-contain"
+            />
           </div>
-          <CardTitle className="text-2xl text-white">Production Tracker</CardTitle>
+          <CardTitle className="text-2xl text-white">Velar Makine Üretim Takip Sistemi</CardTitle>
           <CardDescription className="text-gray-300">
-            Sign in to access the production tracking system
+            Giriş yaparak üretim takip sistemine erişin
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -96,7 +100,7 @@ const Login = () => {
             <div>
               <Input
                 type="text"
-                placeholder="Username"
+                placeholder="Kullanıcı Adı"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
@@ -106,7 +110,7 @@ const Login = () => {
             <div>
               <Input
                 type="password"
-                placeholder="Password"
+                placeholder="Şifre"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
@@ -121,7 +125,7 @@ const Login = () => {
               className="w-full bg-blue-600 hover:bg-blue-700"
               disabled={loading}
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
             </Button>
           </form>
         </CardContent>
