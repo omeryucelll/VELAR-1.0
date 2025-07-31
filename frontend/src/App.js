@@ -651,6 +651,46 @@ const Projects = () => {
     }
   };
 
+  const handleDeleteClick = () => {
+    if (!deleteSelectedId) return;
+    
+    let itemName = '';
+    if (deleteItemType === 'project') {
+      const project = projects.find(p => p.id === deleteSelectedId);
+      itemName = project?.name || '';
+    } else {
+      const part = parts.find(p => p.id === deleteSelectedId);
+      itemName = part?.part_number || '';
+    }
+    
+    setDeleteItemName(itemName);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      if (deleteItemType === 'project') {
+        await axios.delete(`${API}/projects/${deleteSelectedId}`);
+        fetchProjects();
+        fetchParts(); // Refresh parts as well since they might be affected
+      } else {
+        await axios.delete(`${API}/parts/${deleteSelectedId}`);
+        fetchParts();
+      }
+      
+      setShowDeleteConfirm(false);
+      setDeleteSelectedId('');
+      setDeleteItemName('');
+    } catch (error) {
+      console.error('Failed to delete item:', error);
+    }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setDeleteItemName('');
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
