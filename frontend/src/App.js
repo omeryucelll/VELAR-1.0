@@ -130,7 +130,205 @@ const Login = () => {
   );
 };
 
-// QR Scanner Component
+// Dedicated Operator QR Scanner Component (Full Screen)
+const OperatorScanner = () => {
+  const [qrCode, setQrCode] = useState('');
+  const [scanType, setScanType] = useState('start');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState('');
+  const { user, logout } = React.useContext(AuthContext);
+
+  const handleScan = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setResult(null);
+
+    try {
+      const endpoint = scanType === 'start' ? '/scan/start' : '/scan/end';
+      const response = await axios.post(`${API}${endpoint}`, {
+        qr_code: qrCode,
+        username: user.username,
+        password: 'session_authenticated' // Backend will use token instead
+      });
+
+      setResult(response.data);
+      setQrCode('');
+      
+      // Auto-clear result after 3 seconds
+      setTimeout(() => {
+        setResult(null);
+      }, 3000);
+    } catch (error) {
+      setError(error.response?.data?.detail || 'Scan failed');
+      
+      // Auto-clear error after 5 seconds
+      setTimeout(() => {
+        setError('');
+      }, 5000);
+    }
+
+    setLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-800 flex flex-col">
+      {/* Header with minimal info */}
+      <div className="bg-black/20 backdrop-blur-lg border-b border-white/10 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-600/20 rounded-full">
+              <Camera className="h-6 w-6 text-blue-400" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">QR Scanner</h1>
+              <p className="text-sm text-gray-300">Operator: {user?.username}</p>
+            </div>
+          </div>
+          <Button 
+            onClick={logout} 
+            variant="outline" 
+            size="sm"
+            className="border-white/20 text-white hover:bg-white/10"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            End Shift
+          </Button>
+        </div>
+      </div>
+
+      {/* Main Scanner Interface */}
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-lg">
+          <Card className="bg-white/10 backdrop-blur-lg border-white/20 shadow-2xl">
+            <CardHeader className="text-center pb-6">
+              <div className="mx-auto mb-4 p-4 bg-blue-600/20 rounded-full w-fit">
+                <QrCode className="h-12 w-12 text-blue-400" />
+              </div>
+              <CardTitle className="text-2xl text-white mb-2">
+                Scan QR Code
+              </CardTitle>
+              <CardDescription className="text-gray-300">
+                Point camera at QR code or enter code manually
+              </CardDescription>
+            </CardHeader>
+            
+            <CardContent className="space-y-6">
+              <form onSubmit={handleScan} className="space-y-6">
+                {/* Scan Type Selector */}
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Action Type
+                  </label>
+                  <Select value={scanType} onValueChange={setScanType}>
+                    <SelectTrigger className="bg-white/10 border-white/20 text-white h-12 text-lg">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="start">▶️ Start Process</SelectItem>
+                      <SelectItem value="end">⏹️ End Process</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {/* QR Code Input */}
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    QR Code
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="Scan or enter QR code..."
+                    value={qrCode}
+                    onChange={(e) => setQrCode(e.target.value)}
+                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 h-14 text-lg text-center font-mono"
+                    required
+                    autoFocus
+                  />
+                </div>
+                
+                {/* Scan Button */}
+                <Button 
+                  type="submit" 
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 h-14 text-lg font-semibold"
+                  disabled={loading || !qrCode.trim()}
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      {scanType === 'start' ? <Play className="h-5 w-5 mr-3" /> : <Pause className="h-5 w-5 mr-3" />}
+                      {scanType === 'start' ? 'START PROCESS' : 'END PROCESS'}
+                    </>
+                  )}
+                </Button>
+              </form>
+              
+              {/* Success Message */}
+              {result && (
+                <div className="p-4 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/50 rounded-lg animate-in fade-in duration-300">
+                  <div className="flex items-center gap-3 text-green-400 mb-3">
+                    <CheckCircle className="h-6 w-6" />
+                    <span className="font-semibold text-lg">Success!</span>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-white font-medium">{result.message}</p>
+                    <p className="text-green-200">Process Step: {result.step_name}</p>
+                    <p className="text-green-200">Time: {new Date().toLocaleTimeString()}</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Error Message */}
+              {error && (
+                <div className="p-4 bg-gradient-to-r from-red-500/20 to-rose-500/20 border border-red-500/50 rounded-lg animate-in fade-in duration-300">
+                  <div className="flex items-center gap-3 text-red-400 mb-2">
+                    <div className="p-1 bg-red-500/20 rounded-full">
+                      <div className="w-4 h-4 bg-red-500 rounded-full"></div>
+                    </div>
+                    <span className="font-semibold">Error</span>
+                  </div>
+                  <p className="text-red-200">{error}</p>
+                </div>
+              )}
+              
+              {/* Visual Feedback for Empty State */}
+              {!result && !error && !loading && (
+                <div className="text-center py-8">
+                  <div className="mx-auto w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                    <Scan className="h-10 w-10 text-gray-400" />
+                  </div>
+                  <p className="text-gray-400">Ready to scan QR code</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Status Bar */}
+      <div className="bg-black/20 backdrop-blur-lg border-t border-white/10 p-4">
+        <div className="flex items-center justify-center gap-4 text-sm text-gray-300">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span>System Online</span>
+          </div>
+          <div className="w-px h-4 bg-gray-600"></div>
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            <span>{new Date().toLocaleString()}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// QR Scanner Component for Managers/Admins (keeps existing functionality)
 const QRScanner = () => {
   const [qrCode, setQrCode] = useState('');
   const [username, setUsername] = useState('');
