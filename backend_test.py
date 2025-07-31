@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 
 class ProductionTrackingAPITester:
-    def __init__(self, base_url="https://a8e03f62-fc97-4425-8dbc-50329b170edb.preview.emergentagent.com"):
+    def __init__(self, base_url="https://6eb4648f-6a52-486f-a3a6-9720a334c26b.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.tokens = {}  # Store tokens for different users
