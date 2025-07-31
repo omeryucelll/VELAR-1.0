@@ -71,7 +71,7 @@ class ProductionTrackingAPITester:
         # Test credentials from the request
         test_users = [
             ("tunaerdiguven", "tuna123", "manager"),
-            ("orhsanavsar", "orhan123", "operator"), 
+            ("orhanavsar", "orhan123", "operator"), 
             ("admin1", "password123", "admin")
         ]
 
