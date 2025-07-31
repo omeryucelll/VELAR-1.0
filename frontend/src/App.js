@@ -781,6 +781,84 @@ const Projects = () => {
           </Card>
         ))}
       </div>
+
+      {/* Delete Section */}
+      <Card className="bg-white/5 backdrop-blur-lg border-white/10 border-red-500/30">
+        <CardHeader>
+          <CardTitle className="text-white">Proje Veya İş Emrini Sil</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <Select value={deleteItemType} onValueChange={setDeleteItemType}>
+                <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="project">Proje Sil</SelectItem>
+                  <SelectItem value="part">İş Emri Sil</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Select value={deleteSelectedId} onValueChange={setDeleteSelectedId}>
+                <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                  <SelectValue placeholder={deleteItemType === 'project' ? 'Proje Seçin' : 'İş Emri Seçin'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {deleteItemType === 'project' 
+                    ? projects.map(project => (
+                        <SelectItem key={project.id} value={project.id}>
+                          {project.name}
+                        </SelectItem>
+                      ))
+                    : parts.map(part => (
+                        <SelectItem key={part.id} value={part.id}>
+                          {part.part_number}
+                        </SelectItem>
+                      ))
+                  }
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <Button 
+              onClick={handleDeleteClick}
+              disabled={!deleteSelectedId}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Sil
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-white mb-4">
+              Bu dosyayı '{deleteItemName}' silmek istediğinize emin misiniz?
+            </h3>
+            <div className="flex gap-3 justify-end">
+              <Button 
+                onClick={cancelDelete}
+                variant="outline"
+                className="border-gray-500 text-gray-300 hover:bg-gray-700"
+              >
+                İptal Et
+              </Button>
+              <Button 
+                onClick={confirmDelete}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Sil
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
