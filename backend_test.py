@@ -266,7 +266,7 @@ class ProductionTrackingAPITester:
                     "POST", "scan/start",
                     {
                         "qr_code": second_start_qr,
-                        "username": "operator1",
+                        "username": "orhsanavsar",
                         "password": "session_authenticated"
                     },
                     token=operator_token
