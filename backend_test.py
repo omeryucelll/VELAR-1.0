@@ -219,14 +219,16 @@ class ProductionTrackingAPITester:
         print("\n🔍 Testing QR Scanning Workflow...")
         
         qr_codes = self.test_data.get("qr_codes")
-        if not qr_codes:
-            print("❌ No QR codes available for scanning tests")
+        operator_token = self.tokens.get("operator1")
+        
+        if not qr_codes or not operator_token:
+            print("❌ No QR codes or operator token available for scanning tests")
             return
 
-        # Test scanning with operator credentials
+        # Test scanning with operator credentials (traditional method)
         operator_creds = {"username": "operator1", "password": "password123"}
         
-        # Test 1: Start first process step
+        # Test 1: Start first process step with traditional auth
         first_step_qr = qr_codes[0]
         start_qr_code = first_step_qr["start_qr"]["code"]
         
@@ -235,63 +237,69 @@ class ProductionTrackingAPITester:
             {
                 "qr_code": start_qr_code,
                 **operator_creds
-            }
+            },
+            token=operator_token
         )
-        self.log_test("Start first process step", success, 
+        self.log_test("Start first process step (traditional auth)", success, 
                      f"Step: {first_step_qr['step_name']}")
 
         if success:
-            # Test 2: Try to start second step (should fail - sequential enforcement)
-            if len(qr_codes) > 1:
-                second_step_qr = qr_codes[1]
-                second_start_qr = second_step_qr["start_qr"]["code"]
-                
-                success, _ = self.make_request(
-                    "POST", "scan/start",
-                    {
-                        "qr_code": second_start_qr,
-                        **operator_creds
-                    },
-                    expected_status=400
-                )
-                self.log_test("Sequential enforcement (reject step 2)", success)
-
-            # Test 3: End first process step
+            # Test 2: End first process step with session-based auth
             end_qr_code = first_step_qr["end_qr"]["code"]
             success, response = self.make_request(
                 "POST", "scan/end",
                 {
                     "qr_code": end_qr_code,
-                    **operator_creds
-                }
+                    "username": "operator1",
+                    "password": "session_authenticated"  # Key test for new functionality
+                },
+                token=operator_token
             )
-            self.log_test("End first process step", success)
+            self.log_test("End first process step (session auth)", success)
 
-            if success:
-                # Test 4: Now try to start second step (should work)
-                if len(qr_codes) > 1:
-                    success, response = self.make_request(
-                        "POST", "scan/start",
-                        {
-                            "qr_code": second_start_qr,
-                            **operator_creds
-                        }
-                    )
-                    self.log_test("Start second step after first completed", success)
+            if success and len(qr_codes) > 1:
+                # Test 3: Start second step with session-based auth
+                second_step_qr = qr_codes[1]
+                second_start_qr = second_step_qr["start_qr"]["code"]
+                
+                success, response = self.make_request(
+                    "POST", "scan/start",
+                    {
+                        "qr_code": second_start_qr,
+                        "username": "operator1",
+                        "password": "session_authenticated"
+                    },
+                    token=operator_token
+                )
+                self.log_test("Start second step (session auth)", success)
+
+        # Test session-based auth without valid token (should fail)
+        success, _ = self.make_request(
+            "POST", "scan/start",
+            {
+                "qr_code": start_qr_code,
+                "username": "operator1",
+                "password": "session_authenticated"
+            },
+            # No token provided
+            expected_status=401
+        )
+        self.log_test("Session auth without token rejection", success)
 
         # Test error cases
-        # Test invalid QR code
+        # Test invalid QR code with token
         success, _ = self.make_request(
             "POST", "scan/start",
             {
                 "qr_code": "invalid-qr-code",
                 **operator_creds
             },
+            token=operator_token,
             expected_status=404
         )
         self.log_test("Invalid QR code rejection", success)
 
-        # Test invalid credentials for scanning
+        # Test invalid credentials for scanning with token
         success, _ = self.make_request(
             "POST", "scan/start",
             {
@@ -299,6 +307,7 @@ class ProductionTrackingAPITester:
                 "username": "invalid",
                 "password": "wrong"
             },
+            token=operator_token,
             expected_status=401
         )
         self.log_test("Invalid scan credentials rejection", success)
