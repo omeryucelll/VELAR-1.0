@@ -345,8 +345,8 @@ class ProductionTrackingAPITester:
         """Test role-based access control"""
         print("\n🔒 Testing Role-Based Access Control...")
         
-        operator_token = self.tokens.get("operator1")
-        manager_token = self.tokens.get("manager1")
+        operator_token = self.tokens.get("orhsanavsar")
+        manager_token = self.tokens.get("tunaerdiguven")
         
         if not operator_token or not manager_token:
             print("❌ Missing tokens for role-based access tests")
