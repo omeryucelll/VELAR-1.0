@@ -287,6 +287,27 @@ async def get_part_status(part_id: str, current_user: User = Depends(get_current
         "process_instances": [ProcessInstance(**pi) for pi in process_instances]
     }
 
+@api_router.delete("/parts/{part_id}")
+async def delete_part(part_id: str, current_user: User = Depends(get_current_user)):
+    if current_user.role not in [UserRole.MANAGER, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Check if part exists
+    part = await db.parts.find_one({"id": part_id})
+    if not part:
+        raise HTTPException(status_code=404, detail="Part not found")
+    
+    # Delete all associated process instances
+    await db.process_instances.delete_many({"part_id": part_id})
+    
+    # Delete the part
+    result = await db.parts.delete_one({"id": part_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Part not found")
+    
+    return {"message": "Part deleted successfully"}
+
 # QR Code Routes
 @api_router.get("/parts/{part_id}/qr-codes")
 async def get_part_qr_codes(part_id: str, current_user: User = Depends(get_current_user)):
