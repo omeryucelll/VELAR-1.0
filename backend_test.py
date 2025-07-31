@@ -106,7 +106,7 @@ class ProductionTrackingAPITester:
         """Test project endpoints"""
         print("\n📋 Testing Projects...")
         
-        manager_token = self.tokens.get("manager1")
+        manager_token = self.tokens.get("tunaerdiguven")
         if not manager_token:
             print("❌ No manager token available for project tests")
             return
