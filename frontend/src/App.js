@@ -636,7 +636,7 @@ const Projects = () => {
       
       <Card className="bg-white/5 backdrop-blur-lg border-white/10">
         <CardHeader>
-          <CardTitle className="text-white">Add New Part</CardTitle>
+          <CardTitle className="text-white">Yeni İş Emri Ekle</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={createPart} className="space-y-4">
