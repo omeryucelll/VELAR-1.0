@@ -659,6 +659,31 @@ const Projects = () => {
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-white">Projeler ve İş Emirleri</h2>
       
+      {/* New Project Creation Section */}
+      <Card className="bg-white/5 backdrop-blur-lg border-white/10">
+        <CardHeader>
+          <CardTitle className="text-white">Yeni Proje Ekle</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={createProject} className="space-y-4">
+            <div>
+              <Input
+                type="text"
+                placeholder="Yeni Proje Adı"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                required
+              />
+            </div>
+            
+            <Button type="submit" className="bg-green-600 hover:bg-green-700">
+              Proje Oluştur
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+      
       <Card className="bg-white/5 backdrop-blur-lg border-white/10">
         <CardHeader>
           <CardTitle className="text-white">Yeni İş Emri Ekle</CardTitle>
