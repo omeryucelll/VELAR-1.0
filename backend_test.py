@@ -226,7 +226,7 @@ class ProductionTrackingAPITester:
             return
 
         # Test scanning with operator credentials (traditional method)
-        operator_creds = {"username": "operator1", "password": "password123"}
+        operator_creds = {"username": "orhsanavsar", "password": "orhan123"}
         
         # Test 1: Start first process step with traditional auth
         first_step_qr = qr_codes[0]
