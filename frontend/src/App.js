@@ -623,6 +623,30 @@ const Projects = () => {
     }
   };
 
+  const createProject = async (e) => {
+    e.preventDefault();
+    if (!newProjectName.trim()) return;
+
+    try {
+      await axios.post(`${API}/projects`, {
+        name: newProjectName,
+        description: `Project created: ${newProjectName}`,
+        process_steps: [
+          "Initial Quality Control",
+          "Machining (CNC)", 
+          "Welding",
+          "Painting",
+          "Final Quality Control"
+        ]
+      });
+      
+      setNewProjectName('');
+      fetchProjects();
+    } catch (error) {
+      console.error('Failed to create project:', error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
