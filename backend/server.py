@@ -287,13 +287,22 @@ async def get_part_qr_codes(part_id: str, current_user: User = Depends(get_curre
     
     return qr_codes
 
-# QR Scanning Routes
+# QR Scanning Routes with Session-Based Authentication
 @api_router.post("/scan/start")
-async def scan_start_qr(scan_data: QRScanRequest):
-    # Authenticate user
-    user = await db.users.find_one({"username": scan_data.username})
-    if not user or not verify_password(scan_data.password, user["password_hash"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+async def scan_start_qr(scan_data: QRScanRequest, current_user: User = Depends(get_current_user)):
+    # Use session user if password indicates session authentication
+    if scan_data.password == "session_authenticated":
+        user = {
+            "id": current_user.id,
+            "username": current_user.username,
+            "role": current_user.role
+        }
+    else:
+        # Authenticate user via username/password
+        user_doc = await db.users.find_one({"username": scan_data.username})
+        if not user_doc or not verify_password(scan_data.password, user_doc["password_hash"]):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        user = user_doc
     
     # Find process instance
     process_instance = await db.process_instances.find_one({"start_qr_code": scan_data.qr_code})
@@ -340,11 +349,20 @@ async def scan_start_qr(scan_data: QRScanRequest):
     }
 
 @api_router.post("/scan/end")
-async def scan_end_qr(scan_data: QRScanRequest):
-    # Authenticate user
-    user = await db.users.find_one({"username": scan_data.username})
-    if not user or not verify_password(scan_data.password, user["password_hash"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+async def scan_end_qr(scan_data: QRScanRequest, current_user: User = Depends(get_current_user)):
+    # Use session user if password indicates session authentication
+    if scan_data.password == "session_authenticated":
+        user = {
+            "id": current_user.id,
+            "username": current_user.username,
+            "role": current_user.role
+        }
+    else:
+        # Authenticate user via username/password
+        user_doc = await db.users.find_one({"username": scan_data.username})
+        if not user_doc or not verify_password(scan_data.password, user_doc["password_hash"]):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        user = user_doc
     
     # Find process instance
     process_instance = await db.process_instances.find_one({"end_qr_code": scan_data.qr_code})
