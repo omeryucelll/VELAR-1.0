@@ -658,7 +658,7 @@ const Projects = () => {
             <div>
               <Input
                 type="text"
-                placeholder="Part Number"
+                placeholder="İş Emri No"
                 value={newPartNumber}
                 onChange={(e) => setNewPartNumber(e.target.value)}
                 className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
