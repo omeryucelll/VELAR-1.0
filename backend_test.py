@@ -146,7 +146,7 @@ class ProductionTrackingAPITester:
         """Test parts endpoints"""
         print("\n🔧 Testing Parts...")
         
-        manager_token = self.tokens.get("manager1")
+        manager_token = self.tokens.get("tunaerdiguven")
         if not manager_token:
             print("❌ No manager token available for parts tests")
             return
