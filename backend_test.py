@@ -316,7 +316,7 @@ class ProductionTrackingAPITester:
         """Test dashboard endpoint"""
         print("\n📊 Testing Dashboard...")
         
-        manager_token = self.tokens.get("manager1")
+        manager_token = self.tokens.get("tunaerdiguven")
         if not manager_token:
             print("❌ No manager token available for dashboard tests")
             return
