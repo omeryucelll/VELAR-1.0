@@ -215,6 +215,33 @@ async def get_project(project_id: str, current_user: User = Depends(get_current_
         raise HTTPException(status_code=404, detail="Project not found")
     return Project(**project)
 
+@api_router.delete("/projects/{project_id}")
+async def delete_project(project_id: str, current_user: User = Depends(get_current_user)):
+    if current_user.role not in [UserRole.MANAGER, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Check if project exists
+    project = await db.projects.find_one({"id": project_id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Check if there are parts associated with this project
+    parts = await db.parts.find({"project_id": project_id}).to_list(1000)
+    if parts:
+        # Delete all associated process instances first
+        for part in parts:
+            await db.process_instances.delete_many({"part_id": part["id"]})
+        # Delete all parts
+        await db.parts.delete_many({"project_id": project_id})
+    
+    # Delete the project
+    result = await db.projects.delete_one({"id": project_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    return {"message": "Project deleted successfully"}
+
 # Part Routes
 @api_router.post("/parts", response_model=Part)
 async def create_part(part_data: PartCreate, current_user: User = Depends(get_current_user)):
