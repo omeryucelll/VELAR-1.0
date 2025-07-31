@@ -1,4 +1,5 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,10 +7,15 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional, Dict, Any
 import uuid
-from datetime import datetime
-
+from datetime import datetime, timedelta
+import qrcode
+from io import BytesIO
+import base64
+import bcrypt
+import jwt
+from enum import Enum
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -19,38 +25,405 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
-app = FastAPI()
+# Security
+security = HTTPBearer()
+JWT_SECRET = "production-tracking-secret-key"  # In production, use environment variable
+JWT_ALGORITHM = "HS256"
 
-# Create a router with the /api prefix
+# Enums
+class ProcessStatus(str, Enum):
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    BLOCKED = "blocked"
+
+class UserRole(str, Enum):
+    OPERATOR = "operator"
+    MANAGER = "manager"
+    ADMIN = "admin"
+
+# Models
+class User(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    username: str
+    password_hash: str
+    role: UserRole
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    role: UserRole
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class Project(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: Optional[str] = None
+    process_steps: List[str]  # Ordered list of process step names
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_by: str
+
+class ProjectCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    process_steps: List[str]
+
+class Part(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    part_number: str
+    project_id: str
+    current_step_index: int = 0
+    status: ProcessStatus = ProcessStatus.PENDING
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class PartCreate(BaseModel):
+    part_number: str
+    project_id: str
+
+class ProcessInstance(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    part_id: str
+    step_name: str
+    step_index: int
+    status: ProcessStatus = ProcessStatus.PENDING
+    operator_id: Optional[str] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    start_qr_code: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    end_qr_code: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class QRScanRequest(BaseModel):
+    qr_code: str
+    username: str
+    password: str
+
+# Create the main app
+app = FastAPI(title="Production Tracking System")
 api_router = APIRouter(prefix="/api")
 
+# Helper Functions
+def hash_password(password: str) -> str:
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
-# Define Models
-class StatusCheck(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+def verify_password(password: str, hashed_password: str) -> bool:
+    return bcrypt.checkpw(password.encode('utf-8'), hashed_password.encode('utf-8'))
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+def create_jwt_token(user_id: str, username: str, role: str) -> str:
+    payload = {
+        "user_id": user_id,
+        "username": username,
+        "role": role,
+        "exp": datetime.utcnow() + timedelta(hours=24)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
-# Add your routes to the router instead of directly to app
-@api_router.get("/")
-async def root():
-    return {"message": "Hello World"}
+def generate_qr_code(data: str) -> str:
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    buffer = BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    
+    img_str = base64.b64encode(buffer.read()).decode()
+    return f"data:image/png;base64,{img_str}"
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.dict()
-    status_obj = StatusCheck(**status_dict)
-    _ = await db.status_checks.insert_one(status_obj.dict())
-    return status_obj
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user = await db.users.find_one({"id": payload["user_id"]})
+        if user is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return User(**user)
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    status_checks = await db.status_checks.find().to_list(1000)
-    return [StatusCheck(**status_check) for status_check in status_checks]
+# Authentication Routes
+@api_router.post("/auth/register")
+async def register_user(user_data: UserCreate):
+    # Check if user exists
+    existing_user = await db.users.find_one({"username": user_data.username})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    
+    # Create user
+    hashed_password = hash_password(user_data.password)
+    user = User(
+        username=user_data.username,
+        password_hash=hashed_password,
+        role=user_data.role
+    )
+    
+    await db.users.insert_one(user.dict())
+    
+    # Create token
+    token = create_jwt_token(user.id, user.username, user.role.value)
+    
+    return {
+        "token": token,
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "role": user.role
+        }
+    }
+
+@api_router.post("/auth/login")
+async def login_user(login_data: UserLogin):
+    user = await db.users.find_one({"username": login_data.username})
+    if not user or not verify_password(login_data.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    token = create_jwt_token(user["id"], user["username"], user["role"])
+    
+    return {
+        "token": token,
+        "user": {
+            "id": user["id"],
+            "username": user["username"],
+            "role": user["role"]
+        }
+    }
+
+# Project Routes
+@api_router.post("/projects", response_model=Project)
+async def create_project(project_data: ProjectCreate, current_user: User = Depends(get_current_user)):
+    if current_user.role not in [UserRole.MANAGER, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    project = Project(**project_data.dict(), created_by=current_user.id)
+    await db.projects.insert_one(project.dict())
+    return project
+
+@api_router.get("/projects", response_model=List[Project])
+async def get_projects(current_user: User = Depends(get_current_user)):
+    projects = await db.projects.find().to_list(1000)
+    return [Project(**project) for project in projects]
+
+@api_router.get("/projects/{project_id}", response_model=Project)
+async def get_project(project_id: str, current_user: User = Depends(get_current_user)):
+    project = await db.projects.find_one({"id": project_id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return Project(**project)
+
+# Part Routes
+@api_router.post("/parts", response_model=Part)
+async def create_part(part_data: PartCreate, current_user: User = Depends(get_current_user)):
+    if current_user.role not in [UserRole.MANAGER, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Verify project exists
+    project = await db.projects.find_one({"id": part_data.project_id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Create part
+    part = Part(**part_data.dict())
+    await db.parts.insert_one(part.dict())
+    
+    # Create process instances for all steps
+    project_obj = Project(**project)
+    for i, step_name in enumerate(project_obj.process_steps):
+        process_instance = ProcessInstance(
+            part_id=part.id,
+            step_name=step_name,
+            step_index=i
+        )
+        await db.process_instances.insert_one(process_instance.dict())
+    
+    return part
+
+@api_router.get("/parts", response_model=List[Part])
+async def get_parts(current_user: User = Depends(get_current_user)):
+    parts = await db.parts.find().to_list(1000)
+    return [Part(**part) for part in parts]
+
+@api_router.get("/parts/{part_id}/status")
+async def get_part_status(part_id: str, current_user: User = Depends(get_current_user)):
+    part = await db.parts.find_one({"id": part_id})
+    if not part:
+        raise HTTPException(status_code=404, detail="Part not found")
+    
+    process_instances = await db.process_instances.find({"part_id": part_id}).to_list(100)
+    
+    return {
+        "part": Part(**part),
+        "process_instances": [ProcessInstance(**pi) for pi in process_instances]
+    }
+
+# QR Code Routes
+@api_router.get("/parts/{part_id}/qr-codes")
+async def get_part_qr_codes(part_id: str, current_user: User = Depends(get_current_user)):
+    process_instances = await db.process_instances.find({"part_id": part_id}).to_list(100)
+    
+    qr_codes = []
+    for pi in process_instances:
+        process = ProcessInstance(**pi)
+        start_qr_data = generate_qr_code(process.start_qr_code)
+        end_qr_data = generate_qr_code(process.end_qr_code)
+        
+        qr_codes.append({
+            "step_name": process.step_name,
+            "step_index": process.step_index,
+            "status": process.status,
+            "start_qr": {
+                "code": process.start_qr_code,
+                "image": start_qr_data
+            },
+            "end_qr": {
+                "code": process.end_qr_code,
+                "image": end_qr_data
+            }
+        })
+    
+    return qr_codes
+
+# QR Scanning Routes
+@api_router.post("/scan/start")
+async def scan_start_qr(scan_data: QRScanRequest):
+    # Authenticate user
+    user = await db.users.find_one({"username": scan_data.username})
+    if not user or not verify_password(scan_data.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Find process instance
+    process_instance = await db.process_instances.find_one({"start_qr_code": scan_data.qr_code})
+    if not process_instance:
+        raise HTTPException(status_code=404, detail="QR code not found")
+    
+    process = ProcessInstance(**process_instance)
+    
+    # Check if this step can be started (sequential enforcement)
+    if process.step_index > 0:
+        # Check if previous step is completed
+        prev_process = await db.process_instances.find_one({
+            "part_id": process.part_id,
+            "step_index": process.step_index - 1
+        })
+        if not prev_process or prev_process["status"] != ProcessStatus.COMPLETED:
+            raise HTTPException(status_code=400, detail="Previous step must be completed first")
+    
+    # Check if already started
+    if process.status == ProcessStatus.IN_PROGRESS:
+        raise HTTPException(status_code=400, detail="Process already started")
+    
+    if process.status == ProcessStatus.COMPLETED:
+        raise HTTPException(status_code=400, detail="Process already completed")
+    
+    # Start the process
+    now = datetime.utcnow()
+    await db.process_instances.update_one(
+        {"id": process.id},
+        {
+            "$set": {
+                "status": ProcessStatus.IN_PROGRESS,
+                "operator_id": user["id"],
+                "start_time": now
+            }
+        }
+    )
+    
+    return {
+        "message": "Process started successfully",
+        "step_name": process.step_name,
+        "operator": user["username"],
+        "start_time": now
+    }
+
+@api_router.post("/scan/end")
+async def scan_end_qr(scan_data: QRScanRequest):
+    # Authenticate user
+    user = await db.users.find_one({"username": scan_data.username})
+    if not user or not verify_password(scan_data.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Find process instance
+    process_instance = await db.process_instances.find_one({"end_qr_code": scan_data.qr_code})
+    if not process_instance:
+        raise HTTPException(status_code=404, detail="QR code not found")
+    
+    process = ProcessInstance(**process_instance)
+    
+    # Check if process was started
+    if process.status != ProcessStatus.IN_PROGRESS:
+        raise HTTPException(status_code=400, detail="Process must be started first")
+    
+    # Complete the process
+    now = datetime.utcnow()
+    await db.process_instances.update_one(
+        {"id": process.id},
+        {
+            "$set": {
+                "status": ProcessStatus.COMPLETED,
+                "end_time": now
+            }
+        }
+    )
+    
+    # Update part status if this was the last step
+    part = await db.parts.find_one({"id": process.part_id})
+    project = await db.projects.find_one({"id": part["project_id"]})
+    
+    if process.step_index == len(project["process_steps"]) - 1:
+        # This was the last step
+        await db.parts.update_one(
+            {"id": process.part_id},
+            {
+                "$set": {
+                    "status": ProcessStatus.COMPLETED,
+                    "current_step_index": process.step_index
+                }
+            }
+        )
+    else:
+        # Update current step index
+        await db.parts.update_one(
+            {"id": process.part_id},
+            {
+                "$set": {
+                    "current_step_index": process.step_index + 1,
+                    "status": ProcessStatus.IN_PROGRESS
+                }
+            }
+        )
+    
+    return {
+        "message": "Process completed successfully",
+        "step_name": process.step_name,
+        "operator": user["username"],
+        "end_time": now
+    }
+
+# Dashboard Routes
+@api_router.get("/dashboard/overview")
+async def get_dashboard_overview(current_user: User = Depends(get_current_user)):
+    # Get all parts with their current status
+    parts = await db.parts.find().to_list(1000)
+    projects = await db.projects.find().to_list(1000)
+    
+    # Create project lookup
+    project_lookup = {p["id"]: p for p in projects}
+    
+    dashboard_data = []
+    for part in parts:
+        project = project_lookup.get(part["project_id"])
+        if project:
+            dashboard_data.append({
+                "part": Part(**part),
+                "project": Project(**project),
+                "current_step": project["process_steps"][part["current_step_index"]] if part["current_step_index"] < len(project["process_steps"]) else "Completed"
+            })
+    
+    return dashboard_data
 
 # Include the router in the main app
 app.include_router(api_router)
