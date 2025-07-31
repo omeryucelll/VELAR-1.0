@@ -790,7 +790,10 @@ const Projects = () => {
         <CardContent>
           <div className="space-y-4">
             <div>
-              <Select value={deleteItemType} onValueChange={setDeleteItemType}>
+              <Select value={deleteItemType} onValueChange={(value) => {
+                setDeleteItemType(value);
+                setDeleteSelectedId(''); // Clear selection when switching types
+              }}>
                 <SelectTrigger className="bg-white/10 border-white/20 text-white">
                   <SelectValue />
                 </SelectTrigger>
