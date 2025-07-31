@@ -219,7 +219,7 @@ class ProductionTrackingAPITester:
         print("\n🔍 Testing QR Scanning Workflow...")
         
         qr_codes = self.test_data.get("qr_codes")
-        operator_token = self.tokens.get("operator1")
+        operator_token = self.tokens.get("orhsanavsar")
         
         if not qr_codes or not operator_token:
             print("❌ No QR codes or operator token available for scanning tests")
