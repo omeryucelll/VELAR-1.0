@@ -632,7 +632,7 @@ const Projects = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-white">Projects & Parts</h2>
+      <h2 className="text-2xl font-bold text-white">Projeler ve İş Emirleri</h2>
       
       <Card className="bg-white/5 backdrop-blur-lg border-white/10">
         <CardHeader>
