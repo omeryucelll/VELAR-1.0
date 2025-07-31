@@ -849,7 +849,7 @@ const MainApp = () => {
             </TabsTrigger>
             <TabsTrigger value="projects" className="data-[state=active]:bg-white/20">
               <Settings className="h-4 w-4 mr-2" />
-              Projects
+              Projeler ve İş Emirleri
             </TabsTrigger>
             <TabsTrigger value="qrcodes" className="data-[state=active]:bg-white/20">
               <QrCode className="h-4 w-4 mr-2" />
