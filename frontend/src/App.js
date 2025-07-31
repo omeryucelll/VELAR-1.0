@@ -793,10 +793,16 @@ const QRCodes = () => {
   );
 };
 
-// Main App Component
+// Main App Component with Role-Based Interface
 const MainApp = () => {
   const { user, logout } = React.useContext(AuthContext);
 
+  // If user is operator, show only the dedicated scanner interface
+  if (user?.role === 'operator') {
+    return <OperatorScanner />;
+  }
+
+  // For managers and admins, show the full interface with navigation
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-800">
       <nav className="bg-black/20 backdrop-blur-lg border-b border-white/10">
@@ -808,6 +814,9 @@ const MainApp = () => {
             </div>
             
             <div className="flex items-center gap-4">
+              <Badge className="bg-blue-600/20 text-blue-300 border-blue-600/30">
+                {user?.role?.toUpperCase()}
+              </Badge>
               <span className="text-gray-300">Welcome, {user?.username}</span>
               <Button 
                 onClick={logout} 
