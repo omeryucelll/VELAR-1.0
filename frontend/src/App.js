@@ -945,29 +945,14 @@ const Projects = () => {
               )}
             </div>
             
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-              Create Part
+            <Button type="submit" className="bg-green-600 hover:bg-green-700">
+              İş Emri Oluştur
             </Button>
           </form>
         </CardContent>
       </Card>
-      
-      <div className="grid gap-4">
-        {parts.map(part => (
-          <Card key={part.id} className="bg-white/5 backdrop-blur-lg border-white/10">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-white">{part.part_number}</CardTitle>
-                <Badge className={`${getStatusColor(part.status)} text-white`}>
-                  {part.status.replace('_', ' ').toUpperCase()}
-                </Badge>
-              </div>
-            </CardHeader>
-          </Card>
-        ))}
-      </div>
 
-      {/* Delete Section */}
+      {/* Delete Section - Moved directly below the "Yeni İş Emri Ekle" box */}
       <Card className="bg-white/5 backdrop-blur-lg border-white/10 border-red-500/30">
         <CardHeader>
           <CardTitle className="text-white">Proje Veya İş Emrini Sil</CardTitle>
@@ -1021,6 +1006,21 @@ const Projects = () => {
           </div>
         </CardContent>
       </Card>
+      
+      <div className="grid gap-4">
+        {parts.map(part => (
+          <Card key={part.id} className="bg-white/5 backdrop-blur-lg border-white/10">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-white">{part.part_number}</CardTitle>
+                <Badge className={`${getStatusColor(part.status)} text-white`}>
+                  {part.status.replace('_', ' ').toUpperCase()}
+                </Badge>
+              </div>
+            </CardHeader>
+          </Card>
+        ))}
+      </div>
 
       {/* Confirmation Modal */}
       {showDeleteConfirm && (
