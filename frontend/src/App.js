@@ -651,26 +651,38 @@ const Projects = () => {
 
   const createPart = async (e) => {
     e.preventDefault();
-    if (!selectedProject || !newPartNumber) return;
-
-    // Use selected steps or default steps if none selected
-    const processSteps = selectedSteps.length > 0 ? selectedSteps : [
-      "Initial Quality Control",
-      "Machining (CNC)",
-      "Welding", 
-      "Painting",
-      "Final Quality Control"
-    ];
+    if (!newPartNumber) return;
 
     try {
+      let projectId = selectedProject;
+
+      // If custom steps are selected, create a new project with these steps
+      if (selectedSteps.length > 0) {
+        const projectName = `${newPartNumber} - Özel İş Akışı`;
+        const projectResponse = await axios.post(`${API}/projects`, {
+          name: projectName,
+          description: `Auto-generated project for part ${newPartNumber} with custom workflow`,
+          process_steps: selectedSteps
+        });
+        projectId = projectResponse.data.id;
+        
+        // Refresh projects list
+        fetchProjects();
+      } else if (!selectedProject) {
+        alert('Lütfen bir proje seçin veya özel adımlar tanımlayın');
+        return;
+      }
+
+      // Create the part
       await axios.post(`${API}/parts`, {
         part_number: newPartNumber,
-        project_id: selectedProject
+        project_id: projectId
       });
       
       setNewPartNumber('');
       setSelectedProject('');
       setSelectedSteps([]);
+      setShowStepSelector(false);
       fetchParts();
     } catch (error) {
       console.error('Failed to create part:', error);
