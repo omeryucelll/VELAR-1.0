@@ -833,6 +833,106 @@ const Projects = () => {
               />
             </div>
             
+            {/* Step Selection Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-white">İş Akış Adımları</label>
+                <Button
+                  type="button"
+                  onClick={() => setShowStepSelector(!showStepSelector)}
+                  variant="outline"
+                  size="sm"
+                  className="border-white/20 text-white hover:bg-white/10"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Adım Ekle
+                </Button>
+              </div>
+              
+              {/* Step Selector Dropdown */}
+              {showStepSelector && (
+                <Card className="bg-white/5 border-white/20">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-white">Mevcut Adımları Seçin</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-2">
+                    <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto">
+                      {availableSteps.map((step, index) => (
+                        <Button
+                          key={index}
+                          type="button"
+                          onClick={() => addStep(step)}
+                          variant="outline"
+                          size="sm"
+                          className="justify-start text-left border-white/20 text-white hover:bg-white/10 text-xs"
+                        >
+                          <Plus className="h-3 w-3 mr-2" />
+                          {step}
+                        </Button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              
+              {/* Selected Steps Display */}
+              {selectedSteps.length > 0 && (
+                <Card className="bg-blue-600/5 border-blue-500/30">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-blue-300 flex items-center">
+                      <List className="h-4 w-4 mr-2" />
+                      Seçili Adımlar ({selectedSteps.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-2">
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {selectedSteps.map((step, index) => (
+                        <div key={index} className="flex items-center justify-between bg-white/5 rounded p-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs bg-blue-600/20 text-blue-300 px-2 py-1 rounded">
+                              {index + 1}
+                            </span>
+                            <span className="text-sm text-white">{step}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              onClick={() => moveStepUp(index)}
+                              disabled={index === 0}
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-gray-400 hover:text-white"
+                            >
+                              <ChevronUp className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              type="button"
+                              onClick={() => moveStepDown(index)}
+                              disabled={index === selectedSteps.length - 1}
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-gray-400 hover:text-white"
+                            >
+                              <ChevronDown className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              type="button"
+                              onClick={() => removeStep(index)}
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-red-400 hover:text-red-300"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+            
             <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
               Create Part
             </Button>
