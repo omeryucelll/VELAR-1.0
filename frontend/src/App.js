@@ -1076,7 +1076,7 @@ const Projects = () => {
                           <div>
                             <span className="text-white font-medium">{part.part_number}</span>
                             <div className="text-sm text-gray-300 mt-1">
-                              Adım: {part.current_step_index + 1} / {project.process_steps.length}
+                              Adım: {part.current_step_index + 1} / {part.total_steps}
                             </div>
                           </div>
                           <Badge className={`${getStatusColor(part.status)} text-white`}>
