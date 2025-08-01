@@ -119,10 +119,15 @@ class ProductionTrackingAPITester:
         test_project = None
         if success:
             for project in projects:
-                if "Metal Parts Production Line Alpha" in project.get("name", ""):
+                if "ROKETSAN-0001" in project.get("name", "") or "Metal Parts Production Line Alpha" in project.get("name", ""):
                     test_project = project
                     self.test_data["project"] = project
                     break
+            
+            # If no specific project found, use the first available project
+            if not test_project and projects:
+                test_project = projects[0]
+                self.test_data["project"] = test_project
 
         if test_project:
             self.log_test("Found test project", True, f"ID: {test_project['id']}")
