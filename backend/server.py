@@ -226,7 +226,7 @@ async def get_project(project_id: str, current_user: User = Depends(get_current_
         raise HTTPException(status_code=404, detail="Project not found")
     return Project(**project)
 
-@api_router.get("/projects/{project_id}/parts", response_model=List[Part])
+@api_router.get("/projects/{project_id}/parts", response_model=List[PartWithStepInfo])
 async def get_project_parts(project_id: str, current_user: User = Depends(get_current_user)):
     # Verify project exists
     project = await db.projects.find_one({"id": project_id})
@@ -235,7 +235,34 @@ async def get_project_parts(project_id: str, current_user: User = Depends(get_cu
     
     # Get all parts for this project
     parts = await db.parts.find({"project_id": project_id}).to_list(1000)
-    return [Part(**part) for part in parts]
+    
+    # Build parts with step info similar to dashboard endpoint
+    parts_with_step_info = []
+    for part in parts:
+        # Get the actual process instances for this part to determine total steps
+        process_instances = await db.process_instances.find({"part_id": part["id"]}).to_list(100)
+        
+        # Find current step from actual process instances
+        current_step_name = "Completed"
+        if part["current_step_index"] < len(process_instances):
+            # Sort process instances by step_index to ensure correct order
+            process_instances.sort(key=lambda x: x["step_index"])
+            current_step_name = process_instances[part["current_step_index"]]["step_name"]
+        
+        # Create PartWithStepInfo object
+        part_with_info = PartWithStepInfo(
+            id=part["id"],
+            part_number=part["part_number"],
+            project_id=part["project_id"],
+            current_step_index=part["current_step_index"],
+            status=part["status"],
+            created_at=part["created_at"],
+            total_steps=len(process_instances),  # Actual number of steps for this work order
+            current_step_name=current_step_name
+        )
+        parts_with_step_info.append(part_with_info)
+    
+    return parts_with_step_info
 
 @api_router.delete("/projects/{project_id}")
 async def delete_project(project_id: str, current_user: User = Depends(get_current_user)):
