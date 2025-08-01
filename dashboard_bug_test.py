@@ -10,7 +10,7 @@ import json
 from datetime import datetime
 
 class DashboardBugTester:
-    def __init__(self, base_url="https://f174794d-2bf1-4ce3-907a-0cbbafcd8596.preview.emergentagent.com"):
+    def __init__(self, base_url="https://2116cfc7-5917-4476-aeb9-86aa7fc208e6.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.token = None

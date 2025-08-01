@@ -4,7 +4,7 @@ import asyncio
 import requests
 import json
 
-BACKEND_URL = "https://f174794d-2bf1-4ce3-907a-0cbbafcd8596.preview.emergentagent.com"
+BACKEND_URL = "https://2116cfc7-5917-4476-aeb9-86aa7fc208e6.preview.emergentagent.com"
 API_URL = f"{BACKEND_URL}/api"
 
 async def setup_initial_data():
