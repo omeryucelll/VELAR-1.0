@@ -512,7 +512,7 @@ const Dashboard = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white">Production Dashboard</h2>
-        <Button onClick={fetchDashboardData} variant="outline" size="sm">
+        <Button onClick={fetchDashboardData} variant="outline" size="sm" className="bg-gray-300 hover:bg-gray-400 text-gray-800">
           Refresh
         </Button>
       </div>
