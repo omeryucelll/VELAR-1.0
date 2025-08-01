@@ -80,6 +80,16 @@ class Part(BaseModel):
     status: ProcessStatus = ProcessStatus.PENDING
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+class PartWithStepInfo(BaseModel):
+    id: str
+    part_number: str
+    project_id: str
+    current_step_index: int
+    status: ProcessStatus
+    created_at: datetime
+    total_steps: int  # Actual number of process instances for this work order
+    current_step_name: Optional[str] = None  # Name of the current step
+
 class PartCreate(BaseModel):
     part_number: str
     project_id: str
