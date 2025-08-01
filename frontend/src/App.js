@@ -703,7 +703,7 @@ const Projects = () => {
       setSelectedProject('');
       setSelectedSteps([]);
       setShowStepSelector(false);
-      fetchParts();
+      fetchProjectsWithParts();
     } catch (error) {
       console.error('Failed to create part:', error);
     }
