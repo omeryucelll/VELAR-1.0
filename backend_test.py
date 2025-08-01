@@ -371,7 +371,8 @@ class ProductionTrackingAPITester:
                 "POST", "parts",
                 {
                     "part_number": "TEST-PART",
-                    "project_id": self.test_data["project"]["id"]
+                    "project_id": self.test_data["project"]["id"],
+                    "process_steps": ["Hazırlık", "İşleme"]
                 },
                 token=operator_token,
                 expected_status=403
@@ -381,6 +382,170 @@ class ProductionTrackingAPITester:
         # Test operator can access dashboard (should work)
         success, _ = self.make_request("GET", "dashboard/overview", token=operator_token)
         self.log_test("Operator can access dashboard", success)
+
+    def test_work_order_creation_with_custom_steps(self):
+        """Test work order creation with custom process steps"""
+        print("\n🔧 Testing Work Order Creation with Custom Steps...")
+        
+        manager_token = self.tokens.get("tunaerdiguven")
+        if not manager_token:
+            print("❌ No manager token available for work order tests")
+            return
+
+        project = self.test_data.get("project")
+        if not project:
+            print("❌ No test project available for work order tests")
+            return
+
+        # Test 1: Valid work order creation with custom steps
+        custom_steps = ["Hazırlık", "İşleme"]
+        success, response = self.make_request(
+            "POST", "parts",
+            {
+                "part_number": "WO-CUSTOM-001",
+                "project_id": project["id"],
+                "process_steps": custom_steps
+            },
+            token=manager_token
+        )
+        self.log_test("Create work order with custom steps", success)
+        
+        if success:
+            created_part = response
+            self.test_data["custom_work_order"] = created_part
+            
+            # Verify process instances were created with custom steps
+            success, status_data = self.make_request(
+                "GET", f"parts/{created_part['id']}/status",
+                token=manager_token
+            )
+            
+            if success:
+                process_instances = status_data.get("process_instances", [])
+                custom_step_names = [pi["step_name"] for pi in process_instances]
+                
+                # Check that only custom steps were used (not project defaults)
+                steps_match = set(custom_step_names) == set(custom_steps)
+                self.log_test("Process instances use only custom steps", steps_match,
+                             f"Expected: {custom_steps}, Got: {custom_step_names}")
+                
+                # Check correct number of process instances
+                correct_count = len(process_instances) == len(custom_steps)
+                self.log_test("Correct number of process instances", correct_count,
+                             f"Expected: {len(custom_steps)}, Got: {len(process_instances)}")
+
+        # Test 2: Missing steps validation (should return 400)
+        success, response = self.make_request(
+            "POST", "parts",
+            {
+                "part_number": "WO-NO-STEPS",
+                "project_id": project["id"],
+                "process_steps": []
+            },
+            token=manager_token,
+            expected_status=400
+        )
+        self.log_test("Reject work order with empty steps", success)
+        
+        if success:
+            error_message = response.get("detail", "")
+            correct_error = "At least one process step must be selected" in error_message
+            self.log_test("Correct error message for empty steps", correct_error,
+                         f"Message: {error_message}")
+
+        # Test 3: Missing project validation (should return 404)
+        success, response = self.make_request(
+            "POST", "parts",
+            {
+                "part_number": "WO-NO-PROJECT",
+                "project_id": "non-existent-project-id",
+                "process_steps": ["Hazırlık", "İşleme"]
+            },
+            token=manager_token,
+            expected_status=404
+        )
+        self.log_test("Reject work order with invalid project", success)
+        
+        if success:
+            error_message = response.get("detail", "")
+            correct_error = "Project not found" in error_message
+            self.log_test("Correct error message for invalid project", correct_error,
+                         f"Message: {error_message}")
+
+        # Test 4: Authorization - operator cannot create work orders
+        operator_token = self.tokens.get("orhsanavsar")
+        if operator_token:
+            success, _ = self.make_request(
+                "POST", "parts",
+                {
+                    "part_number": "WO-UNAUTHORIZED",
+                    "project_id": project["id"],
+                    "process_steps": ["Hazırlık", "İşleme"]
+                },
+                token=operator_token,
+                expected_status=403
+            )
+            self.log_test("Operator cannot create work orders", success)
+
+    def test_custom_steps_vs_project_defaults(self):
+        """Test that custom steps override project defaults"""
+        print("\n🔄 Testing Custom Steps vs Project Defaults...")
+        
+        manager_token = self.tokens.get("tunaerdiguven")
+        project = self.test_data.get("project")
+        
+        if not manager_token or not project:
+            print("❌ Missing manager token or project for custom steps test")
+            return
+
+        # Get project details to see default steps
+        success, project_detail = self.make_request(
+            "GET", f"projects/{project['id']}", 
+            token=manager_token
+        )
+        
+        if not success:
+            self.log_test("Get project for defaults comparison", False)
+            return
+            
+        project_default_steps = project_detail.get("process_steps", [])
+        
+        # Create work order with different custom steps
+        custom_steps = ["Özel Adım 1", "Özel Adım 2", "Özel Adım 3"]
+        success, response = self.make_request(
+            "POST", "parts",
+            {
+                "part_number": "WO-OVERRIDE-TEST",
+                "project_id": project["id"],
+                "process_steps": custom_steps
+            },
+            token=manager_token
+        )
+        
+        if success:
+            created_part = response
+            
+            # Get process instances
+            success, status_data = self.make_request(
+                "GET", f"parts/{created_part['id']}/status",
+                token=manager_token
+            )
+            
+            if success:
+                process_instances = status_data.get("process_instances", [])
+                actual_steps = [pi["step_name"] for pi in process_instances]
+                
+                # Verify custom steps are used, not project defaults
+                uses_custom_steps = set(actual_steps) == set(custom_steps)
+                uses_project_defaults = set(actual_steps) == set(project_default_steps)
+                
+                self.log_test("Uses custom steps (not project defaults)", uses_custom_steps,
+                             f"Custom: {custom_steps}, Actual: {actual_steps}")
+                
+                self.log_test("Does NOT use project defaults", not uses_project_defaults,
+                             f"Project defaults: {project_default_steps}")
+        else:
+            self.log_test("Create work order for override test", False)
 
     def run_all_tests(self):
         """Run all test suites"""
