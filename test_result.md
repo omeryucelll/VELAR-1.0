@@ -219,17 +219,17 @@ backend:
         agent: "testing"
         comment: "QR code generation working correctly. Proper start/end QR codes generated for all process steps with base64 encoded images."
 
-  - task: "Dashboard Current Step Display Bug"
+  - task: "Dashboard Progress Bar Bug"
     implemented: true
-    working: true
-    file: "backend/server.py"
+    working: false
+    file: "backend/server.py, frontend/src/App.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: false
         agent: "main"
-        comment: "Fixed dashboard bug where current_step was incorrectly showing project's default steps instead of actual custom steps from process instances. Updated dashboard logic to fetch current step from actual process instances."
+        comment: "Fixed progress bar bug: was using project's default process_steps.length instead of actual work order's process instances count. Updated backend to include total_steps and progress_percentage. Updated frontend to use correct progress data."
       - working: true
         agent: "testing"
         comment: "✅ DASHBOARD BUG FIX VERIFIED: All 11 critical tests passed. Dashboard correctly shows custom step names from process instances (e.g., 'Hazırlık', 'Başlangıç') instead of project defaults ('Initial Quality Control', 'Machining', etc.). Created work orders with custom steps ['Hazırlık', 'İşleme'] and ['Başlangıç', 'Orta Aşama', 'Bitiş'] - dashboard displays actual custom step names, not project defaults. No old default labels appearing. Dashboard structure verified with proper current_step field. Bug fix is working perfectly."
