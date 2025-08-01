@@ -653,6 +653,15 @@ const Projects = () => {
     e.preventDefault();
     if (!selectedProject || !newPartNumber) return;
 
+    // Use selected steps or default steps if none selected
+    const processSteps = selectedSteps.length > 0 ? selectedSteps : [
+      "Initial Quality Control",
+      "Machining (CNC)",
+      "Welding", 
+      "Painting",
+      "Final Quality Control"
+    ];
+
     try {
       await axios.post(`${API}/parts`, {
         part_number: newPartNumber,
@@ -661,10 +670,34 @@ const Projects = () => {
       
       setNewPartNumber('');
       setSelectedProject('');
+      setSelectedSteps([]);
       fetchParts();
     } catch (error) {
       console.error('Failed to create part:', error);
     }
+  };
+
+  const addStep = (step) => {
+    setSelectedSteps([...selectedSteps, step]);
+  };
+
+  const removeStep = (index) => {
+    const newSteps = selectedSteps.filter((_, i) => i !== index);
+    setSelectedSteps(newSteps);
+  };
+
+  const moveStepUp = (index) => {
+    if (index === 0) return;
+    const newSteps = [...selectedSteps];
+    [newSteps[index - 1], newSteps[index]] = [newSteps[index], newSteps[index - 1]];
+    setSelectedSteps(newSteps);
+  };
+
+  const moveStepDown = (index) => {
+    if (index === selectedSteps.length - 1) return;
+    const newSteps = [...selectedSteps];
+    [newSteps[index], newSteps[index + 1]] = [newSteps[index + 1], newSteps[index]];
+    setSelectedSteps(newSteps);
   };
 
   const createProject = async (e) => {
