@@ -305,29 +305,190 @@ const OperatorScanner = () => {
       </div>
 
       {/* Main Scanner Interface */}
-      <div className="flex-1 flex items-center justify-center p-6">
+      <div className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-lg">
           <Card className="bg-white/10 backdrop-blur-lg border-white/20 shadow-2xl">
-            <CardHeader className="text-center pb-6">
+            <CardHeader className="text-center pb-4">
               <div className="mx-auto mb-4 p-4 bg-blue-600/20 rounded-full w-fit">
                 <QrCode className="h-12 w-12 text-blue-400" />
               </div>
               <CardTitle className="text-2xl text-white mb-2">
-                Scan QR Code
+                QR Code Scanner
               </CardTitle>
               <CardDescription className="text-gray-300">
-                Point camera at QR code or enter code manually
+                {manualMode ? 'Enter QR code manually' : 'Point camera at QR code'}
               </CardDescription>
             </CardHeader>
             
-            <CardContent className="space-y-6">
-              <form onSubmit={handleScan} className="space-y-6">
-                {/* Scan Type Selector */}
-                <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    Action Type
-                  </label>
-                  <Select value={scanType} onValueChange={setScanType}>
+            <CardContent className="space-y-4">
+              {/* Scan Type Selector */}
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  Action Type
+                </label>
+                <Select value={scanType} onValueChange={setScanType}>
+                  <SelectTrigger className="bg-white/10 border-white/20 text-white h-12">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="start">▶️ Start Process</SelectItem>
+                    <SelectItem value="end">⏹️ End Process</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Camera Scanner or Manual Mode Toggle */}
+              <div className="flex justify-center mb-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setManualMode(!manualMode)}
+                  className="border-white/20 text-white hover:bg-white/10"
+                >
+                  {manualMode ? (
+                    <>
+                      <Camera className="h-4 w-4 mr-2" />
+                      Switch to Camera
+                    </>
+                  ) : (
+                    <>
+                      <Scan className="h-4 w-4 mr-2" />
+                      Manual Entry
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Camera Scanner */}
+              {!manualMode && (
+                <div className="space-y-4">
+                  <div className="relative bg-black rounded-lg overflow-hidden" style={{ aspectRatio: '4/3' }}>
+                    <video
+                      ref={videoRef}
+                      className="w-full h-full object-cover"
+                      playsInline
+                      muted
+                    />
+                    {!cameraActive && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                        <Button
+                          onClick={startCamera}
+                          className="bg-blue-600 hover:bg-blue-700"
+                          disabled={loading}
+                        >
+                          <Camera className="h-5 w-5 mr-2" />
+                          Start Camera
+                        </Button>
+                      </div>
+                    )}
+                    {cameraActive && (
+                      <div className="absolute top-2 right-2">
+                        <Button
+                          onClick={stopCamera}
+                          variant="outline"
+                          size="sm"
+                          className="bg-black/50 border-white/20 text-white hover:bg-black/70"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {qrCode && (
+                    <div className="text-center">
+                      <p className="text-sm text-gray-300">Detected QR Code:</p>
+                      <p className="text-white font-mono bg-white/10 p-2 rounded mt-1 break-all">{qrCode}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Manual Entry Mode */}
+              {manualMode && (
+                <form onSubmit={handleManualScan} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">
+                      QR Code
+                    </label>
+                    <Input
+                      type="text"
+                      placeholder="Enter QR code..."
+                      value={qrCode}
+                      onChange={(e) => setQrCode(e.target.value)}
+                      className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 h-12 text-center font-mono"
+                      required
+                      autoFocus
+                    />
+                  </div>
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 h-12"
+                    disabled={loading || !qrCode.trim()}
+                  >
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        {scanType === 'start' ? <Play className="h-5 w-5 mr-2" /> : <Pause className="h-5 w-5 mr-2" />}
+                        {scanType === 'start' ? 'START PROCESS' : 'END PROCESS'}
+                      </>
+                    )}
+                  </Button>
+                </form>
+              )}
+
+              {/* Camera Error */}
+              {cameraError && (
+                <div className="p-3 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
+                  <div className="flex items-start gap-2 text-yellow-400">
+                    <Camera className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold text-sm">Camera Issue</p>
+                      <p className="text-xs text-yellow-300 mt-1">{cameraError}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Success Message */}
+              {result && (
+                <div className="p-4 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/50 rounded-lg animate-in fade-in duration-300">
+                  <div className="flex items-center gap-3 text-green-400 mb-2">
+                    <CheckCircle className="h-6 w-6" />
+                    <span className="font-semibold">Success!</span>
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <p className="text-white font-medium">{result.message}</p>
+                    <p className="text-green-200">Process Step: {result.step_name}</p>
+                    <p className="text-green-200">Time: {new Date().toLocaleTimeString()}</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Error Message */}
+              {error && (
+                <div className="p-4 bg-gradient-to-r from-red-500/20 to-rose-500/20 border border-red-500/50 rounded-lg animate-in fade-in duration-300">
+                  <div className="flex items-center gap-2 text-red-400 mb-2">
+                    <div className="p-1 bg-red-500/20 rounded-full">
+                      <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                    </div>
+                    <span className="font-semibold text-sm">Error</span>
+                  </div>
+                  <p className="text-red-200 text-sm">{error}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
                     <SelectTrigger className="bg-white/10 border-white/20 text-white h-12 text-lg">
                       <SelectValue />
                     </SelectTrigger>
