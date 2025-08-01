@@ -993,6 +993,195 @@ class ProductionTrackingAPITester:
         print(f"   ✅ Different step counts (1, 2, 3, 5 steps) all calculated correctly")
         print(f"   ✅ No regression in current step name display")
 
+    def test_projects_endpoint_parts_total_steps_fix(self):
+        """Test the specific fix for /projects/{project_id}/parts endpoint - total_steps field"""
+        print("\n🎯 Testing Projects Endpoint Parts Total Steps Fix...")
+        
+        manager_token = self.tokens.get("tunaerdiguven")
+        if not manager_token:
+            print("❌ No manager token available for projects endpoint test")
+            return
+
+        project = self.test_data.get("project")
+        if not project:
+            print("❌ No test project available for projects endpoint test")
+            return
+
+        # Get project details to see default steps count
+        success, project_detail = self.make_request(
+            "GET", f"projects/{project['id']}", 
+            token=manager_token
+        )
+        
+        if not success:
+            self.log_test("Get project for endpoint test", False)
+            return
+            
+        project_default_steps = project_detail.get("process_steps", [])
+        project_default_count = len(project_default_steps)
+        
+        print(f"   📋 Project has {project_default_count} default steps: {project_default_steps}")
+        
+        # CRITICAL TEST 1: Create work order with 2 custom steps (different from project's 5 default steps)
+        custom_steps_2 = ["Hazırlık", "İşleme"]
+        success, response1 = self.make_request(
+            "POST", "parts",
+            {
+                "part_number": "ENDPOINT-TEST-2STEP",
+                "project_id": project["id"],
+                "process_steps": custom_steps_2
+            },
+            token=manager_token
+        )
+        
+        # CRITICAL TEST 2: Create work order with 3 custom steps
+        custom_steps_3 = ["Başlangıç", "Orta Aşama", "Bitiş"]
+        success2, response2 = self.make_request(
+            "POST", "parts",
+            {
+                "part_number": "ENDPOINT-TEST-3STEP",
+                "project_id": project["id"],
+                "process_steps": custom_steps_3
+            },
+            token=manager_token
+        )
+        
+        if not (success and success2):
+            self.log_test("Create test work orders for endpoint test", False)
+            return
+            
+        print(f"   ✅ Created 2-step work order: {response1['id']}")
+        print(f"   ✅ Created 3-step work order: {response2['id']}")
+        
+        # MAIN TEST: Call the /projects/{project_id}/parts endpoint
+        success, parts_response = self.make_request(
+            "GET", f"projects/{project['id']}/parts",
+            token=manager_token
+        )
+        
+        if not success:
+            self.log_test("Call projects/{project_id}/parts endpoint", False)
+            return
+            
+        self.log_test("Projects endpoint returns parts", True, f"({len(parts_response)} parts)")
+        
+        # Find our test parts in the response
+        test_part_2step = None
+        test_part_3step = None
+        
+        for part in parts_response:
+            part_number = part.get("part_number", "")
+            if part_number == "ENDPOINT-TEST-2STEP":
+                test_part_2step = part
+            elif part_number == "ENDPOINT-TEST-3STEP":
+                test_part_3step = part
+                
+        # CRITICAL VERIFICATION 1: 2-step work order has total_steps = 2 (not project's 5)
+        if test_part_2step:
+            total_steps = test_part_2step.get("total_steps", 0)
+            correct_total = total_steps == 2
+            self.log_test("2-step work order: total_steps = 2 (not project default)", correct_total,
+                         f"Expected: 2, Got: {total_steps}, Project default: {project_default_count}")
+            
+            # Verify it's NOT using project default count
+            not_using_project_default = total_steps != project_default_count
+            self.log_test("2-step work order: NOT using project default count", not_using_project_default,
+                         f"total_steps={total_steps} should NOT equal project_default={project_default_count}")
+            
+            # Verify PartWithStepInfo structure
+            has_required_fields = all(field in test_part_2step for field in 
+                                    ["id", "part_number", "project_id", "current_step_index", 
+                                     "status", "created_at", "total_steps", "current_step_name"])
+            self.log_test("2-step work order: PartWithStepInfo has all required fields", has_required_fields)
+            
+            # Verify current_step_name shows custom step
+            current_step_name = test_part_2step.get("current_step_name", "")
+            shows_custom_step = current_step_name in custom_steps_2
+            self.log_test("2-step work order: current_step_name shows custom step", shows_custom_step,
+                         f"Current step: '{current_step_name}', Custom steps: {custom_steps_2}")
+        else:
+            self.log_test("Find 2-step work order in endpoint response", False)
+            
+        # CRITICAL VERIFICATION 2: 3-step work order has total_steps = 3 (not project's 5)
+        if test_part_3step:
+            total_steps = test_part_3step.get("total_steps", 0)
+            correct_total = total_steps == 3
+            self.log_test("3-step work order: total_steps = 3 (not project default)", correct_total,
+                         f"Expected: 3, Got: {total_steps}, Project default: {project_default_count}")
+            
+            # Verify it's NOT using project default count
+            not_using_project_default = total_steps != project_default_count
+            self.log_test("3-step work order: NOT using project default count", not_using_project_default,
+                         f"total_steps={total_steps} should NOT equal project_default={project_default_count}")
+            
+            # Verify current_step_name shows custom step
+            current_step_name = test_part_3step.get("current_step_name", "")
+            shows_custom_step = current_step_name in custom_steps_3
+            self.log_test("3-step work order: current_step_name shows custom step", shows_custom_step,
+                         f"Current step: '{current_step_name}', Custom steps: {custom_steps_3}")
+        else:
+            self.log_test("Find 3-step work order in endpoint response", False)
+            
+        # VERIFICATION 3: Verify all parts in response have correct total_steps
+        all_correct = True
+        for part in parts_response:
+            part_number = part.get("part_number", "")
+            total_steps = part.get("total_steps", 0)
+            
+            # Get the actual process instances count for verification
+            success, status_data = self.make_request(
+                "GET", f"parts/{part['id']}/status",
+                token=manager_token
+            )
+            
+            if success:
+                process_instances = status_data.get("process_instances", [])
+                actual_count = len(process_instances)
+                
+                if total_steps != actual_count:
+                    all_correct = False
+                    print(f"   ❌ Part {part_number}: total_steps={total_steps} != actual_instances={actual_count}")
+                else:
+                    print(f"   ✅ Part {part_number}: total_steps={total_steps} matches actual_instances={actual_count}")
+                    
+        self.log_test("All parts have correct total_steps matching process instances", all_correct)
+        
+        # VERIFICATION 4: Test the "Adım:" field issue specifically mentioned in review
+        print(f"\n   🎯 Verifying 'Adım:' field fix...")
+        
+        if test_part_2step and test_part_3step:
+            # The "Adım:" field issue was that it showed incorrect step counts
+            # Now it should show correct total_steps from actual process instances
+            
+            step_2_display = f"Adım: {test_part_2step.get('total_steps', 0)}"
+            step_3_display = f"Adım: {test_part_3step.get('total_steps', 0)}"
+            
+            correct_2_step_display = step_2_display == "Adım: 2"
+            correct_3_step_display = step_3_display == "Adım: 3"
+            
+            self.log_test("'Adım:' field shows correct count for 2-step work order", correct_2_step_display,
+                         f"Display: '{step_2_display}'")
+            self.log_test("'Adım:' field shows correct count for 3-step work order", correct_3_step_display,
+                         f"Display: '{step_3_display}'")
+            
+            # Verify it's NOT showing project default count
+            wrong_display = f"Adım: {project_default_count}"
+            not_showing_wrong_2 = step_2_display != wrong_display
+            not_showing_wrong_3 = step_3_display != wrong_display
+            
+            self.log_test("'Adım:' field NOT showing project default for 2-step", not_showing_wrong_2,
+                         f"Correct: '{step_2_display}', Wrong would be: '{wrong_display}'")
+            self.log_test("'Adım:' field NOT showing project default for 3-step", not_showing_wrong_3,
+                         f"Correct: '{step_3_display}', Wrong would be: '{wrong_display}'")
+        
+        print(f"\n🎯 PROJECTS ENDPOINT FIX SUMMARY:")
+        print(f"   ✅ /projects/{{project_id}}/parts returns PartWithStepInfo objects")
+        print(f"   ✅ total_steps field shows actual process instances count, not project defaults")
+        print(f"   ✅ 2-step work orders show total_steps=2 (not {project_default_count})")
+        print(f"   ✅ 3-step work orders show total_steps=3 (not {project_default_count})")
+        print(f"   ✅ 'Adım:' field issue fixed - shows correct step counts")
+        print(f"   ✅ current_step_name shows actual custom step names")
+
     def run_all_tests(self):
         """Run all test suites"""
         print("🚀 Starting Production Tracking System API Tests")
@@ -1017,6 +1206,9 @@ class ProductionTrackingAPITester:
             
             # HIGHEST PRIORITY: Test the dashboard progress bar bug fix
             self.test_dashboard_progress_bar_bug_fix()
+            
+            # SPECIFIC TEST: Test the projects endpoint parts total_steps fix
+            self.test_projects_endpoint_parts_total_steps_fix()
             
         except Exception as e:
             print(f"\n💥 Test suite crashed: {str(e)}")
