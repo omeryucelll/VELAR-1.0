@@ -258,9 +258,10 @@ metadata:
 
 test_plan:
   current_focus:
-    - "User Authentication System"
-    - "Role-Based Access Control"
-    - "JWT Token Generation and Validation"
+    - "Work Order Creation with Custom Steps"
+    - "Work Order Backend Validation"
+    - "Work Order Creation Frontend Logic"
+    - "Work Order Validation Messages"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
