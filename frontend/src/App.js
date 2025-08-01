@@ -751,6 +751,7 @@ const Projects = () => {
       
       setNewProjectName('');
       fetchProjects();
+      fetchProjectsWithParts();
     } catch (error) {
       console.error('Failed to create project:', error);
     }
