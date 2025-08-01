@@ -1012,11 +1012,13 @@ const Projects = () => {
                           {project.name}
                         </SelectItem>
                       ))
-                    : parts.map(part => (
-                        <SelectItem key={part.id} value={part.id}>
-                          {part.part_number}
-                        </SelectItem>
-                      ))
+                    : projectsWithParts.flatMap(project => 
+                        project.parts?.map(part => (
+                          <SelectItem key={part.id} value={part.id}>
+                            {part.part_number} ({project.name})
+                          </SelectItem>
+                        )) || []
+                      )
                   }
                 </SelectContent>
               </Select>
