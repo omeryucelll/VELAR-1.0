@@ -1010,6 +1010,9 @@ class ProductionTrackingAPITester:
             # CRITICAL: Test the dashboard current step display bug fix
             self.test_dashboard_current_step_display_bug_fix()
             
+            # HIGHEST PRIORITY: Test the dashboard progress bar bug fix
+            self.test_dashboard_progress_bar_bug_fix()
+            
         except Exception as e:
             print(f"\n💥 Test suite crashed: {str(e)}")
             return 1
