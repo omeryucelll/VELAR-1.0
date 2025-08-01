@@ -215,6 +215,17 @@ async def get_project(project_id: str, current_user: User = Depends(get_current_
         raise HTTPException(status_code=404, detail="Project not found")
     return Project(**project)
 
+@api_router.get("/projects/{project_id}/parts", response_model=List[Part])
+async def get_project_parts(project_id: str, current_user: User = Depends(get_current_user)):
+    # Verify project exists
+    project = await db.projects.find_one({"id": project_id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Get all parts for this project
+    parts = await db.parts.find({"project_id": project_id}).to_list(1000)
+    return [Part(**part) for part in parts]
+
 @api_router.delete("/projects/{project_id}")
 async def delete_project(project_id: str, current_user: User = Depends(get_current_user)):
     if current_user.role not in [UserRole.MANAGER, UserRole.ADMIN]:
