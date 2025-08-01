@@ -264,6 +264,7 @@ metadata:
 
 test_plan:
   current_focus:
+    - "Dashboard Current Step Display Bug"
     - "Work Order Creation Frontend Logic"
     - "Work Order Validation Messages"
   stuck_tasks: []
