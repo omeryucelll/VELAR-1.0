@@ -583,6 +583,46 @@ const Projects = () => {
   const [deleteSelectedId, setDeleteSelectedId] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteItemName, setDeleteItemName] = useState('');
+  const [selectedSteps, setSelectedSteps] = useState([]);
+  const [showStepSelector, setShowStepSelector] = useState(false);
+
+  // Available manufacturing steps
+  const availableSteps = [
+    "1-DEPO",
+    "2-LAZER KESİM", 
+    "3-BÜKÜM",
+    "4-KAYNAK",
+    "5-CNC FREZE",
+    "6-CNC TORNA",
+    "7-TESVİYE ÇAPAK ALMA",
+    "8-KLAVUZ ÇEKME",
+    "9-KESİM (Şerit Daire Testere)",
+    "10-PRES ŞİŞİRME ÇÖKERTME KALIP",
+    "11-MATKAP",
+    "12-KUMLAMA",
+    "13-YAŞ BOYA",
+    "14-MONTAJ",
+    "15-DIŞ OPERASYON ISIL İŞLEME SEVK",
+    "16-DIŞ OPERASYON KAPLAMA İŞLEMİNE SEVK",
+    "17-KAPLAMA GİRİŞ MUAYENE",
+    "18-DIŞ OPERASYON YAŞ BOYA İŞLEMİNE SEVK",
+    "19-YAŞ BOYA GİRİŞ MUAYENE",
+    "20-DIŞ OPERASYON TOZ BOYA İŞLEMİNE SEVK",
+    "21-TOZ BOYA GİRİŞ MUAYENE",
+    "22-DIŞ İMALATA SEVK",
+    "23-DIŞ İMALAT GİRİŞ MUAYENE",
+    "24-DIŞ OPERASYON KESİM GİRİŞ MUAYENE",
+    "25-KAYNAĞINDA MUAYENE",
+    "26-SMLE GİRİŞ",
+    "27-SON MUAYENE MÜŞTERİ SEVK",
+    "28-YARI MAMÜL",
+    "29-PUNTA KAYNAK",
+    "30-PLAZMA LAZER SU JETİ SEVK",
+    "31-ASTAR BOYA",
+    "32-KAYNAK AĞZI AÇMA",
+    "33-TAŞLAMA DOĞRULTMA",
+    "34-ARA MUAYENE"
+  ];
 
   useEffect(() => {
     fetchProjects();
