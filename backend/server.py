@@ -498,10 +498,20 @@ async def get_dashboard_overview(current_user: User = Depends(get_current_user))
     for part in parts:
         project = project_lookup.get(part["project_id"])
         if project:
+            # Get the actual process instances for this part to determine current step
+            process_instances = await db.process_instances.find({"part_id": part["id"]}).to_list(100)
+            
+            # Find current step from actual process instances (not project defaults)
+            current_step = "Completed"
+            if part["current_step_index"] < len(process_instances):
+                # Sort process instances by step_index to ensure correct order
+                process_instances.sort(key=lambda x: x["step_index"])
+                current_step = process_instances[part["current_step_index"]]["step_name"]
+            
             dashboard_data.append({
                 "part": Part(**part),
                 "project": Project(**project),
-                "current_step": project["process_steps"][part["current_step_index"]] if part["current_step_index"] < len(project["process_steps"]) else "Completed"
+                "current_step": current_step
             })
     
     return dashboard_data
