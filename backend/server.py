@@ -511,7 +511,9 @@ async def get_dashboard_overview(current_user: User = Depends(get_current_user))
             dashboard_data.append({
                 "part": Part(**part),
                 "project": Project(**project),
-                "current_step": current_step
+                "current_step": current_step,
+                "total_steps": len(process_instances),  # Actual number of steps for this work order
+                "progress_percentage": ((part["current_step_index"] + 1) / len(process_instances)) * 100 if len(process_instances) > 0 else 0
             })
     
     return dashboard_data
