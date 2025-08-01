@@ -740,6 +740,9 @@ class ProductionTrackingAPITester:
             self.test_work_order_creation_with_custom_steps()
             self.test_custom_steps_vs_project_defaults()
             
+            # CRITICAL: Test the dashboard current step display bug fix
+            self.test_dashboard_current_step_display_bug_fix()
+            
         except Exception as e:
             print(f"\n💥 Test suite crashed: {str(e)}")
             return 1
