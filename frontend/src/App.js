@@ -574,7 +574,7 @@ const Dashboard = () => {
 // Projects Component
 const Projects = () => {
   const [projects, setProjects] = useState([]);
-  const [parts, setParts] = useState([]);
+  const [projectsWithParts, setProjectsWithParts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState('');
   const [newPartNumber, setNewPartNumber] = useState('');
