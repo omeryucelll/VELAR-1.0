@@ -873,7 +873,10 @@ const Projects = () => {
             {/* Step Selection Section */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-white">İş Akış Adımları</label>
+                <div>
+                  <label className="text-sm font-medium text-white">İş Akış Adımları</label>
+                  <p className="text-xs text-gray-400 mt-1">En az bir adım seçmelisiniz</p>
+                </div>
                 <Button
                   type="button"
                   onClick={() => setShowStepSelector(!showStepSelector)}
