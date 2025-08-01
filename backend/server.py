@@ -260,18 +260,21 @@ async def create_part(part_data: PartCreate, current_user: User = Depends(get_cu
     if current_user.role not in [UserRole.MANAGER, UserRole.ADMIN]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
+    # Validation: At least one process step must be provided
+    if not part_data.process_steps or len(part_data.process_steps) == 0:
+        raise HTTPException(status_code=400, detail="At least one process step must be selected")
+    
     # Verify project exists
     project = await db.projects.find_one({"id": part_data.project_id})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
     # Create part
-    part = Part(**part_data.dict())
+    part = Part(**part_data.dict(exclude={'process_steps'}))
     await db.parts.insert_one(part.dict())
     
-    # Create process instances for all steps
-    project_obj = Project(**project)
-    for i, step_name in enumerate(project_obj.process_steps):
+    # Create process instances using the custom process steps (not project's default steps)
+    for i, step_name in enumerate(part_data.process_steps):
         process_instance = ProcessInstance(
             part_id=part.id,
             step_name=step_name,
