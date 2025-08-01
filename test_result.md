@@ -226,7 +226,29 @@ backend:
         comment: "Dashboard endpoint working correctly, returning proper data structure with parts, projects, and current step information."
 
 frontend:
-  # Frontend testing not performed as per instructions
+  - task: "Work Order Creation Frontend Logic"
+    implemented: true
+    working: false
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "main"
+        comment: "Updated createPart function to require both project selection and custom steps. Removed auto-project creation logic. Now sends selected steps to backend properly."
+
+  - task: "Work Order Validation Messages"
+    implemented: true
+    working: false
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "main"
+        comment: "Added clear validation messages for both project selection and step selection requirements. Updated UI labels to make requirements clearer."
 
 metadata:
   created_by: "testing_agent"
