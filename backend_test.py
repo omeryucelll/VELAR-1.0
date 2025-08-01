@@ -562,6 +562,10 @@ class ProductionTrackingAPITester:
             self.test_dashboard()
             self.test_role_based_access()
             
+            # New tests for work order creation with custom steps
+            self.test_work_order_creation_with_custom_steps()
+            self.test_custom_steps_vs_project_defaults()
+            
         except Exception as e:
             print(f"\n💥 Test suite crashed: {str(e)}")
             return 1
