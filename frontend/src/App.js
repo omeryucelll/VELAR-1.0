@@ -625,8 +625,7 @@ const Projects = () => {
   ];
 
   useEffect(() => {
-    fetchProjects();
-    fetchParts();
+    fetchProjectsWithParts();
   }, []);
 
   const fetchProjects = async () => {
@@ -638,12 +637,33 @@ const Projects = () => {
     }
   };
 
-  const fetchParts = async () => {
+  const fetchProjectsWithParts = async () => {
     try {
-      const response = await axios.get(`${API}/parts`);
-      setParts(response.data);
+      const response = await axios.get(`${API}/projects`);
+      const projects = response.data;
+      setProjects(projects);
+      
+      // Fetch parts for each project
+      const projectsWithPartsPromises = projects.map(async (project) => {
+        try {
+          const partsResponse = await axios.get(`${API}/projects/${project.id}/parts`);
+          return {
+            ...project,
+            parts: partsResponse.data
+          };
+        } catch (error) {
+          console.error(`Failed to fetch parts for project ${project.id}:`, error);
+          return {
+            ...project,
+            parts: []
+          };
+        }
+      });
+      
+      const projectsWithPartsData = await Promise.all(projectsWithPartsPromises);
+      setProjectsWithParts(projectsWithPartsData);
     } catch (error) {
-      console.error('Failed to fetch parts:', error);
+      console.error('Failed to fetch projects:', error);
     } finally {
       setLoading(false);
     }
