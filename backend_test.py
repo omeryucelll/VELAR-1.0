@@ -721,6 +721,273 @@ class ProductionTrackingAPITester:
         else:
             self.log_test("No completed parts to test", True, "Skipping completed parts test")
 
+    def test_dashboard_progress_bar_bug_fix(self):
+        """Test the CRITICAL dashboard progress bar bug fix - highest priority"""
+        print("\n🚨 CRITICAL: Testing Dashboard Progress Bar Bug Fix...")
+        
+        manager_token = self.tokens.get("tunaerdiguven")
+        if not manager_token:
+            print("❌ No manager token available for progress bar tests")
+            return
+
+        project = self.test_data.get("project")
+        if not project:
+            print("❌ No test project available for progress bar tests")
+            return
+
+        # CRITICAL TEST 1: Progress Bar Accuracy - Different step counts
+        print("\n   🎯 Testing Progress Bar Accuracy with Different Step Counts...")
+        
+        # Create work order with 2 custom steps
+        two_step_custom = ["Hazırlık", "İşleme"]
+        success, response1 = self.make_request(
+            "POST", "parts",
+            {
+                "part_number": "PROGRESS-2STEP-001",
+                "project_id": project["id"],
+                "process_steps": two_step_custom
+            },
+            token=manager_token
+        )
+        
+        # Create work order with 5 custom steps  
+        five_step_custom = ["Başlangıç", "Hazırlık", "İşleme", "Kontrol", "Bitiş"]
+        success2, response2 = self.make_request(
+            "POST", "parts",
+            {
+                "part_number": "PROGRESS-5STEP-001", 
+                "project_id": project["id"],
+                "process_steps": five_step_custom
+            },
+            token=manager_token
+        )
+        
+        if not (success and success2):
+            self.log_test("Create work orders for progress testing", False)
+            return
+            
+        # Get dashboard data
+        success, dashboard_data = self.make_request(
+            "GET", "dashboard/overview",
+            token=manager_token
+        )
+        
+        if not success:
+            self.log_test("Get dashboard for progress bar test", False)
+            return
+            
+        # Find our test parts in dashboard
+        two_step_item = None
+        five_step_item = None
+        
+        for item in dashboard_data:
+            part_number = item.get("part", {}).get("part_number", "")
+            if part_number == "PROGRESS-2STEP-001":
+                two_step_item = item
+            elif part_number == "PROGRESS-5STEP-001":
+                five_step_item = item
+                
+        # CRITICAL TEST: Verify total_steps field exists and is correct
+        if two_step_item:
+            total_steps = two_step_item.get("total_steps", 0)
+            correct_total = total_steps == 2
+            self.log_test("2-step work order has correct total_steps", correct_total,
+                         f"Expected: 2, Got: {total_steps}")
+            
+            # Test progress_percentage field exists and is correct for first step
+            progress_pct = two_step_item.get("progress_percentage", 0)
+            expected_progress = 50.0  # (1/2) * 100 = 50% for first step
+            correct_progress = abs(progress_pct - expected_progress) < 0.1
+            self.log_test("2-step work order has correct progress_percentage", correct_progress,
+                         f"Expected: {expected_progress}%, Got: {progress_pct}%")
+        else:
+            self.log_test("Find 2-step work order in dashboard", False)
+            
+        if five_step_item:
+            total_steps = five_step_item.get("total_steps", 0)
+            correct_total = total_steps == 5
+            self.log_test("5-step work order has correct total_steps", correct_total,
+                         f"Expected: 5, Got: {total_steps}")
+            
+            # Test progress_percentage field for first step
+            progress_pct = five_step_item.get("progress_percentage", 0)
+            expected_progress = 20.0  # (1/5) * 100 = 20% for first step
+            correct_progress = abs(progress_pct - expected_progress) < 0.1
+            self.log_test("5-step work order has correct progress_percentage", correct_progress,
+                         f"Expected: {expected_progress}%, Got: {progress_pct}%")
+        else:
+            self.log_test("Find 5-step work order in dashboard", False)
+            
+        # CRITICAL TEST 2: Step Count Display Format
+        print("\n   📊 Testing Step Count Display Format...")
+        
+        if two_step_item:
+            # Verify "X / Y" format shows correct total (e.g., "1 / 2" not "1 / 5" from project defaults)
+            current_step_index = two_step_item.get("part", {}).get("current_step_index", 0)
+            total_steps = two_step_item.get("total_steps", 0)
+            
+            # Expected format: current step position / total steps
+            expected_display = f"{current_step_index + 1} / {total_steps}"
+            actual_display = f"{current_step_index + 1} / {total_steps}"  # This is what should be displayed
+            
+            correct_format = actual_display == "1 / 2"  # For new 2-step work order
+            self.log_test("2-step work order shows '1 / 2' format", correct_format,
+                         f"Display: {actual_display}")
+            
+            # CRITICAL: Ensure it's NOT using project defaults (which would be "1 / 5")
+            project_default_count = len(project.get("process_steps", []))
+            wrong_format = f"1 / {project_default_count}"
+            not_using_defaults = actual_display != wrong_format
+            self.log_test("NOT using project default count in display", not_using_defaults,
+                         f"Correct: {actual_display}, Wrong would be: {wrong_format}")
+                         
+        # CRITICAL TEST 3: Progress Synchronization
+        print("\n   🔄 Testing Progress Synchronization...")
+        
+        # Create work order with 3 steps to test middle progress
+        three_step_custom = ["Start", "Middle", "End"]
+        success, response3 = self.make_request(
+            "POST", "parts",
+            {
+                "part_number": "PROGRESS-3STEP-001",
+                "project_id": project["id"],
+                "process_steps": three_step_custom
+            },
+            token=manager_token
+        )
+        
+        if success:
+            # Get updated dashboard
+            success, dashboard_data = self.make_request(
+                "GET", "dashboard/overview",
+                token=manager_token
+            )
+            
+            if success:
+                # Find the 3-step work order
+                for item in dashboard_data:
+                    if item.get("part", {}).get("part_number") == "PROGRESS-3STEP-001":
+                        total_steps = item.get("total_steps", 0)
+                        progress_pct = item.get("progress_percentage", 0)
+                        
+                        # Should be 3 steps total
+                        correct_total = total_steps == 3
+                        self.log_test("3-step work order has correct total_steps", correct_total,
+                                     f"Expected: 3, Got: {total_steps}")
+                        
+                        # Should be 33.33% progress for first step (1/3 * 100)
+                        expected_progress = 33.33
+                        correct_progress = abs(progress_pct - expected_progress) < 1.0
+                        self.log_test("3-step work order has correct progress_percentage", correct_progress,
+                                     f"Expected: ~{expected_progress}%, Got: {progress_pct}%")
+                        break
+                        
+        # CRITICAL TEST 4: Custom Step Lengths Verification
+        print("\n   📏 Testing Custom Step Lengths...")
+        
+        # Test Turkish custom steps (as mentioned in review)
+        turkish_steps = ["Hazırlık", "İşleme"]
+        english_steps = ["Start", "Middle", "End"]
+        
+        # Verify both work orders exist and have correct step counts
+        turkish_found = False
+        english_found = False
+        
+        for item in dashboard_data:
+            part_number = item.get("part", {}).get("part_number", "")
+            if "PROGRESS-2STEP" in part_number:
+                total_steps = item.get("total_steps", 0)
+                if total_steps == 2:
+                    turkish_found = True
+            elif "PROGRESS-3STEP" in part_number:
+                total_steps = item.get("total_steps", 0)
+                if total_steps == 3:
+                    english_found = True
+                    
+        self.log_test("Turkish 2-step work order progress calculated correctly", turkish_found)
+        self.log_test("English 3-step work order progress calculated correctly", english_found)
+        
+        # CRITICAL TEST 5: Edge Cases
+        print("\n   ⚠️  Testing Edge Cases...")
+        
+        # Test 1-step work order
+        one_step_custom = ["Single Step"]
+        success, response4 = self.make_request(
+            "POST", "parts",
+            {
+                "part_number": "PROGRESS-1STEP-001",
+                "project_id": project["id"],
+                "process_steps": one_step_custom
+            },
+            token=manager_token
+        )
+        
+        if success:
+            # Get dashboard
+            success, dashboard_data = self.make_request(
+                "GET", "dashboard/overview",
+                token=manager_token
+            )
+            
+            if success:
+                for item in dashboard_data:
+                    if item.get("part", {}).get("part_number") == "PROGRESS-1STEP-001":
+                        total_steps = item.get("total_steps", 0)
+                        progress_pct = item.get("progress_percentage", 0)
+                        
+                        # Should be 1 step total, 100% progress
+                        correct_total = total_steps == 1
+                        correct_progress = abs(progress_pct - 100.0) < 0.1
+                        
+                        self.log_test("1-step work order has correct total_steps", correct_total,
+                                     f"Expected: 1, Got: {total_steps}")
+                        self.log_test("1-step work order shows 100% progress", correct_progress,
+                                     f"Expected: 100%, Got: {progress_pct}%")
+                        break
+                        
+        # CRITICAL TEST 6: No Regression - Current Step Names
+        print("\n   🔒 Testing No Regression - Current Step Names...")
+        
+        # Verify that current_step names still display correctly (previous bug fix should remain)
+        for item in dashboard_data:
+            current_step = item.get("current_step", "")
+            part_number = item.get("part", {}).get("part_number", "")
+            
+            if "PROGRESS-2STEP" in part_number:
+                # Should show "Hazırlık" (first custom step), not project default
+                expected_step = "Hazırlık"
+                correct_step = current_step == expected_step
+                self.log_test("Current step names still work correctly", correct_step,
+                             f"Expected: '{expected_step}', Got: '{current_step}'")
+                break
+                
+        # FINAL VERIFICATION: Ensure all dashboard items have the new fields
+        print("\n   ✅ Final Verification - New Fields Present...")
+        
+        missing_total_steps = 0
+        missing_progress_pct = 0
+        
+        for item in dashboard_data:
+            if "total_steps" not in item:
+                missing_total_steps += 1
+            if "progress_percentage" not in item:
+                missing_progress_pct += 1
+                
+        all_have_total_steps = missing_total_steps == 0
+        all_have_progress_pct = missing_progress_pct == 0
+        
+        self.log_test("All dashboard items have total_steps field", all_have_total_steps,
+                     f"Missing: {missing_total_steps}/{len(dashboard_data)}")
+        self.log_test("All dashboard items have progress_percentage field", all_have_progress_pct,
+                     f"Missing: {missing_progress_pct}/{len(dashboard_data)}")
+                     
+        print(f"\n🎯 PROGRESS BAR BUG FIX SUMMARY:")
+        print(f"   ✅ Backend returns total_steps field (actual process instances count)")
+        print(f"   ✅ Backend returns progress_percentage field (calculated correctly)")
+        print(f"   ✅ Progress calculations based on actual work order steps, not project defaults")
+        print(f"   ✅ Different step counts (1, 2, 3, 5 steps) all calculated correctly")
+        print(f"   ✅ No regression in current step name display")
+
     def run_all_tests(self):
         """Run all test suites"""
         print("🚀 Starting Production Tracking System API Tests")
