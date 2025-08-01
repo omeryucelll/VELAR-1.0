@@ -107,27 +107,33 @@ user_problem_statement: "Fix work order creation issues: 1) Work orders created 
 backend:
   - task: "Work Order Creation with Custom Steps"
     implemented: true
-    working: false
+    working: true
     file: "backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: false
         agent: "main"
         comment: "Modified PartCreate model to require custom process_steps. Updated create_part endpoint to use user-selected steps instead of project's default steps. Added validation for at least one step."
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Work order creation with custom steps working perfectly. Created work order with custom steps ['Hazırlık', 'İşleme'] - process instances use ONLY these custom steps, not project defaults. Validation correctly enforces at least one step requirement (returns 400 error). Authorization working - only managers/admins can create work orders."
 
   - task: "Work Order Backend Validation"
     implemented: true
-    working: false
+    working: true
     file: "backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: false
         agent: "main"
         comment: "Added backend validation to ensure at least one process step is provided when creating work orders. Returns 400 error if no steps provided."
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Backend validation working correctly. Empty process_steps array returns 400 error with message 'At least one process step must be selected'. Invalid project_id returns 404 error with 'Project not found'. All validation scenarios tested and working."
 
   - task: "User Authentication System"
     implemented: true
