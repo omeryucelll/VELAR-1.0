@@ -105,6 +105,30 @@
 user_problem_statement: "Fix work order creation issues: 1) Work orders created within selected projects should use only user-selected custom steps, not project's default steps. 2) Enforce validation that both project selection and at least one custom step are mandatory. 3) Remove auto-project creation - all work orders must be associated with existing projects. 4) Show appropriate validation messages for missing requirements."
 
 backend:
+  - task: "Work Order Creation with Custom Steps"
+    implemented: true
+    working: false
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "main"
+        comment: "Modified PartCreate model to require custom process_steps. Updated create_part endpoint to use user-selected steps instead of project's default steps. Added validation for at least one step."
+
+  - task: "Work Order Backend Validation"
+    implemented: true
+    working: false
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "main"
+        comment: "Added backend validation to ensure at least one process step is provided when creating work orders. Returns 400 error if no steps provided."
+
   - task: "User Authentication System"
     implemented: true
     working: true
