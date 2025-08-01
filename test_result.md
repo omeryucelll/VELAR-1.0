@@ -221,15 +221,18 @@ backend:
 
   - task: "Dashboard Current Step Display Bug"
     implemented: true
-    working: false
+    working: true
     file: "backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: false
         agent: "main"
         comment: "Fixed dashboard bug where current_step was incorrectly showing project's default steps instead of actual custom steps from process instances. Updated dashboard logic to fetch current step from actual process instances."
+      - working: true
+        agent: "testing"
+        comment: "✅ DASHBOARD BUG FIX VERIFIED: All 11 critical tests passed. Dashboard correctly shows custom step names from process instances (e.g., 'Hazırlık', 'Başlangıç') instead of project defaults ('Initial Quality Control', 'Machining', etc.). Created work orders with custom steps ['Hazırlık', 'İşleme'] and ['Başlangıç', 'Orta Aşama', 'Bitiş'] - dashboard displays actual custom step names, not project defaults. No old default labels appearing. Dashboard structure verified with proper current_step field. Bug fix is working perfectly."
 
 frontend:
   - task: "Work Order Creation Frontend Logic"
