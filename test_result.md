@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Test the user authentication system with the newly created user accounts: tunaerdiguven (manager), orhsanavsar (operator), admin1 (admin). Verify JWT tokens, role-based access, and QR scanning functionality."
+user_problem_statement: "Fix work order creation issues: 1) Work orders created within selected projects should use only user-selected custom steps, not project's default steps. 2) Enforce validation that both project selection and at least one custom step are mandatory. 3) Remove auto-project creation - all work orders must be associated with existing projects. 4) Show appropriate validation messages for missing requirements."
 
 backend:
   - task: "User Authentication System"
