@@ -765,7 +765,12 @@ const Projects = () => {
       const project = projects.find(p => p.id === deleteSelectedId);
       itemName = project?.name || '';
     } else {
-      const part = parts.find(p => p.id === deleteSelectedId);
+      // Find part across all projects
+      let part = null;
+      for (const project of projectsWithParts) {
+        part = project.parts?.find(p => p.id === deleteSelectedId);
+        if (part) break;
+      }
       itemName = part?.part_number || '';
     }
     
