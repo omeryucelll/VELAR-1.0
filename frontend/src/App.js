@@ -1035,19 +1035,77 @@ const Projects = () => {
         </CardContent>
       </Card>
       
-      <div className="grid gap-4">
-        {parts.map(part => (
-          <Card key={part.id} className="bg-white/5 backdrop-blur-lg border-white/10">
+      
+      {/* Projects with their Work Orders - Hierarchical Display */}
+      <div className="space-y-6">
+        <h3 className="text-xl font-bold text-white">Projeler ve İş Emirleri</h3>
+        
+        {projectsWithParts.map(project => (
+          <Card key={project.id} className="bg-white/5 backdrop-blur-lg border-white/10">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-white">{part.part_number}</CardTitle>
-                <Badge className={`${getStatusColor(part.status)} text-white`}>
-                  {part.status.replace('_', ' ').toUpperCase()}
-                </Badge>
+                <div>
+                  <CardTitle className="text-white text-lg">{project.name}</CardTitle>
+                  <CardDescription className="text-gray-300">
+                    {project.description}
+                  </CardDescription>
+                  <div className="mt-2">
+                    <Badge className="bg-blue-600/20 text-blue-300 border-blue-600/30">
+                      {project.parts?.length || 0} İş Emri
+                    </Badge>
+                  </div>
+                </div>
               </div>
             </CardHeader>
+            
+            {/* Work Orders within this Project */}
+            {project.parts && project.parts.length > 0 && (
+              <CardContent>
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-white mb-3">İş Emirleri:</h4>
+                  <div className="grid gap-3">
+                    {project.parts.map(part => (
+                      <div key={part.id} className="bg-white/5 rounded-lg p-3 border border-white/10">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="text-white font-medium">{part.part_number}</span>
+                            <div className="text-sm text-gray-300 mt-1">
+                              Adım: {part.current_step_index + 1} / {project.process_steps.length}
+                            </div>
+                          </div>
+                          <Badge className={`${getStatusColor(part.status)} text-white`}>
+                            {part.status.replace('_', ' ').toUpperCase()}
+                          </Badge>
+                        </div>
+                        <div className="mt-2 text-xs text-gray-400">
+                          Oluşturuldu: {new Date(part.created_at).toLocaleDateString('tr-TR')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            )}
+            
+            {/* Empty state for projects with no work orders */}
+            {(!project.parts || project.parts.length === 0) && (
+              <CardContent>
+                <div className="text-center py-4 text-gray-400">
+                  Bu projede henüz iş emri bulunmuyor
+                </div>
+              </CardContent>
+            )}
           </Card>
         ))}
+        
+        {/* Empty state for no projects */}
+        {projectsWithParts.length === 0 && !loading && (
+          <Card className="bg-white/5 backdrop-blur-lg border-white/10">
+            <CardContent className="py-8 text-center">
+              <p className="text-gray-400">Henüz proje bulunmuyor</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Confirmation Modal */}
