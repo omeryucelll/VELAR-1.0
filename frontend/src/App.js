@@ -141,10 +141,98 @@ const OperatorScanner = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const [manualMode, setManualMode] = useState(false);
   const { user, logout } = React.useContext(AuthContext);
+  
+  const videoRef = React.useRef(null);
+  const qrScannerRef = React.useRef(null);
 
-  const handleScan = async (e) => {
-    e.preventDefault();
+  // Initialize QR Scanner
+  React.useEffect(() => {
+    let QrScanner;
+    
+    const initScanner = async () => {
+      try {
+        // Dynamically import QrScanner
+        const QrScannerModule = await import('qr-scanner');
+        QrScanner = QrScannerModule.default;
+        
+        if (videoRef.current && !manualMode) {
+          qrScannerRef.current = new QrScanner(
+            videoRef.current,
+            (result) => {
+              setQrCode(result.data);
+              // Auto-process the scan if we have a result
+              if (result.data) {
+                handleAutoScan(result.data);
+              }
+            },
+            {
+              highlightScanRegion: true,
+              highlightCodeOutline: true,
+              maxScansPerSecond: 5,
+              preferredCamera: 'environment', // Use back camera on mobile
+            }
+          );
+        }
+      } catch (err) {
+        console.error('Failed to initialize QR Scanner:', err);
+        setCameraError('Failed to initialize camera scanner. Please use manual mode.');
+        setManualMode(true);
+      }
+    };
+
+    initScanner();
+
+    return () => {
+      if (qrScannerRef.current) {
+        qrScannerRef.current.stop();
+        qrScannerRef.current.destroy();
+      }
+    };
+  }, [manualMode]);
+
+  // Start camera
+  const startCamera = async () => {
+    if (!qrScannerRef.current || manualMode) return;
+    
+    try {
+      setCameraError('');
+      await qrScannerRef.current.start();
+      setCameraActive(true);
+    } catch (err) {
+      console.error('Camera start failed:', err);
+      let errorMessage = 'Camera access denied. ';
+      
+      if (err.name === 'NotAllowedError') {
+        errorMessage += 'Please allow camera permissions and refresh the page.';
+      } else if (err.name === 'NotFoundError') {
+        errorMessage += 'No camera found on this device.';
+      } else if (err.name === 'NotSupportedError') {
+        errorMessage += 'Camera not supported in this browser.';
+      } else {
+        errorMessage += 'Please try manual mode instead.';
+      }
+      
+      setCameraError(errorMessage);
+      setManualMode(true);
+    }
+  };
+
+  // Stop camera
+  const stopCamera = () => {
+    if (qrScannerRef.current) {
+      qrScannerRef.current.stop();
+      setCameraActive(false);
+    }
+  };
+
+  // Handle automatic scan when QR code is detected
+  const handleAutoScan = async (scannedCode) => {
+    if (loading) return; // Prevent multiple simultaneous scans
+    
     setLoading(true);
     setError('');
     setResult(null);
@@ -152,17 +240,23 @@ const OperatorScanner = () => {
     try {
       const endpoint = scanType === 'start' ? '/scan/start' : '/scan/end';
       const response = await axios.post(`${API}${endpoint}`, {
-        qr_code: qrCode,
+        qr_code: scannedCode,
         username: user.username,
-        password: 'session_authenticated' // Backend will use token instead
+        password: 'session_authenticated'
       });
 
       setResult(response.data);
-      setQrCode('');
       
-      // Auto-clear result after 3 seconds
+      // Stop camera briefly after successful scan
+      stopCamera();
+      
+      // Auto-clear result and restart camera after 3 seconds
       setTimeout(() => {
         setResult(null);
+        setQrCode('');
+        if (!manualMode) {
+          startCamera();
+        }
       }, 3000);
     } catch (error) {
       setError(error.response?.data?.detail || 'Scan failed');
@@ -174,6 +268,14 @@ const OperatorScanner = () => {
     }
 
     setLoading(false);
+  };
+
+  // Handle manual scan
+  const handleManualScan = async (e) => {
+    e.preventDefault();
+    if (!qrCode.trim()) return;
+    
+    await handleAutoScan(qrCode);
   };
 
   return (
