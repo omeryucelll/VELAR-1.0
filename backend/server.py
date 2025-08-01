@@ -83,6 +83,7 @@ class Part(BaseModel):
 class PartCreate(BaseModel):
     part_number: str
     project_id: str
+    process_steps: List[str]  # Required custom process steps for this work order
 
 class ProcessInstance(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
