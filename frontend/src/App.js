@@ -716,24 +716,20 @@ const Projects = () => {
     e.preventDefault();
     if (!newProjectName.trim()) return;
 
-    // Use selected steps or default steps if none selected
-    const processSteps = selectedSteps.length > 0 ? selectedSteps : [
-      "Initial Quality Control",
-      "Machining (CNC)", 
-      "Welding",
-      "Painting",
-      "Final Quality Control"
-    ];
-
     try {
       await axios.post(`${API}/projects`, {
         name: newProjectName,
         description: `Project created: ${newProjectName}`,
-        process_steps: processSteps
+        process_steps: [
+          "Initial Quality Control",
+          "Machining (CNC)", 
+          "Welding",
+          "Painting",
+          "Final Quality Control"
+        ]
       });
       
       setNewProjectName('');
-      setSelectedSteps([]);
       fetchProjects();
     } catch (error) {
       console.error('Failed to create project:', error);
