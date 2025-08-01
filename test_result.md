@@ -237,6 +237,18 @@ backend:
         agent: "testing"
         comment: "🎉 DASHBOARD PROGRESS BAR BUG FIX FULLY VERIFIED: All 18 critical progress bar tests passed! ✅ Backend correctly returns total_steps (actual process instances count) and progress_percentage fields. ✅ Progress calculations accurate: 2-step=50%, 3-step=33.33%, 5-step=20%, 1-step=100%. ✅ Step count display shows correct format (1/2 not 1/5 from project defaults). ✅ Progress synchronization working for different completion stages. ✅ Custom step lengths (Turkish/English) calculated correctly. ✅ Edge cases (1 step, many steps) handled properly. ✅ No regression in current step names. The fix successfully resolves the reported issue where progress bars were using project defaults instead of actual work order steps."
 
+  - task: "Projects Endpoint Parts Total Steps Fix"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "🎯 PROJECTS ENDPOINT PARTS TOTAL STEPS FIX FULLY VERIFIED: All critical tests passed! ✅ /projects/{project_id}/parts endpoint returns PartWithStepInfo objects with correct total_steps field. ✅ Created test work orders with 2 custom steps and 3 custom steps (different from project's 5 default steps). ✅ Endpoint correctly returns total_steps=2 for 2-step work orders and total_steps=3 for 3-step work orders (NOT project's default 5). ✅ All 23 parts verified to have total_steps matching actual process instances count. ✅ 'Adım:' field issue completely fixed - shows correct step counts (Adım: 2, Adım: 3) instead of project defaults (Adım: 5). ✅ current_step_name shows actual custom step names ('Hazırlık', 'Başlangıç') not project defaults. ✅ PartWithStepInfo structure verified with all required fields. The specific fix for the 'Adım:' field issue in 'Projeler ve İş Emirleri' section is working perfectly."
+
 frontend:
   - task: "Work Order Creation Frontend Logic"
     implemented: true
