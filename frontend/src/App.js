@@ -673,6 +673,12 @@ const Projects = () => {
     e.preventDefault();
     if (!newPartNumber) return;
 
+    // Validation: Project must be selected
+    if (!selectedProject) {
+      alert('Lütfen bir proje seçin. İş emri mutlaka bir projeye bağlı olmalıdır.');
+      return;
+    }
+
     // Validation: At least one process step must be selected
     if (selectedSteps.length === 0) {
       alert('En az bir süreç adımı seçmelisiniz! "Adım Ekle" butonunu kullanarak süreç adımlarını ekleyin.');
@@ -680,39 +686,11 @@ const Projects = () => {
     }
 
     try {
-      let projectId = selectedProject;
-
-      // Case 1: Project is selected - add work order to selected project
-      if (selectedProject) {
-        // Use the selected project - work order will be created within this project
-        projectId = selectedProject;
-        
-        // Note: The selectedSteps will be used to determine the process flow for this specific work order
-        // But we still use the selected project as the container
-        
-      } else {
-        // Case 2: No project selected - create a new project with custom steps
-        if (selectedSteps.length > 0) {
-          const projectName = `${newPartNumber} - Özel İş Akışı`;
-          const projectResponse = await axios.post(`${API}/projects`, {
-            name: projectName,
-            description: `Auto-generated project for part ${newPartNumber} with custom workflow`,
-            process_steps: selectedSteps
-          });
-          projectId = projectResponse.data.id;
-          
-          // Refresh projects list
-          fetchProjects();
-        } else {
-          alert('Lütfen bir proje seçin veya özel adımlar tanımlayın');
-          return;
-        }
-      }
-
-      // Create the work order within the selected/created project
+      // Create the work order within the selected project using custom steps
       await axios.post(`${API}/parts`, {
         part_number: newPartNumber,
-        project_id: projectId
+        project_id: selectedProject,
+        process_steps: selectedSteps
       });
       
       setNewPartNumber('');
@@ -722,7 +700,11 @@ const Projects = () => {
       fetchProjectsWithParts();
     } catch (error) {
       console.error('Failed to create part:', error);
-      alert('İş emri oluşturulurken hata oluştu. Lütfen tekrar deneyin.');
+      if (error.response?.data?.detail) {
+        alert(`İş emri oluşturulurken hata oluştu: ${error.response.data.detail}`);
+      } else {
+        alert('İş emri oluşturulurken hata oluştu. Lütfen tekrar deneyin.');
+      }
     }
   };
 
