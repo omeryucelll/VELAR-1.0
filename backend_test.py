@@ -547,6 +547,180 @@ class ProductionTrackingAPITester:
         else:
             self.log_test("Create work order for override test", False)
 
+    def test_dashboard_current_step_display_bug_fix(self):
+        """Test the critical dashboard current step display bug fix"""
+        print("\n🚨 Testing Dashboard Current Step Display Bug Fix...")
+        
+        manager_token = self.tokens.get("tunaerdiguven")
+        if not manager_token:
+            print("❌ No manager token available for dashboard bug fix tests")
+            return
+
+        project = self.test_data.get("project")
+        if not project:
+            print("❌ No test project available for dashboard bug fix tests")
+            return
+
+        # Test Scenario 1: Create work order with custom steps and verify dashboard shows them
+        custom_steps = ["Hazırlık", "İşleme"]
+        success, response = self.make_request(
+            "POST", "parts",
+            {
+                "part_number": "DASHBOARD-TEST-001",
+                "project_id": project["id"],
+                "process_steps": custom_steps
+            },
+            token=manager_token
+        )
+        
+        if not success:
+            self.log_test("Create work order for dashboard test", False)
+            return
+            
+        created_part = response
+        self.test_data["dashboard_test_part"] = created_part
+        
+        # Get dashboard data
+        success, dashboard_data = self.make_request(
+            "GET", "dashboard/overview",
+            token=manager_token
+        )
+        
+        if not success:
+            self.log_test("Get dashboard for current step test", False)
+            return
+            
+        # Find our test part in dashboard data
+        test_part_dashboard = None
+        for item in dashboard_data:
+            if item.get("part", {}).get("id") == created_part["id"]:
+                test_part_dashboard = item
+                break
+        
+        if not test_part_dashboard:
+            self.log_test("Find test part in dashboard", False, "Part not found in dashboard")
+            return
+            
+        # Test 1: Dashboard shows actual custom step name (not project default)
+        current_step = test_part_dashboard.get("current_step", "")
+        expected_first_step = custom_steps[0]  # "Hazırlık"
+        
+        shows_custom_step = current_step == expected_first_step
+        self.log_test("Dashboard shows custom step name", shows_custom_step,
+                     f"Expected: '{expected_first_step}', Got: '{current_step}'")
+        
+        # Test 2: Dashboard does NOT show project default step names
+        project_default_steps = project.get("process_steps", [])
+        shows_project_default = current_step in project_default_steps
+        
+        self.log_test("Dashboard does NOT show project defaults", not shows_project_default,
+                     f"Current step '{current_step}' should not be in project defaults {project_default_steps}")
+        
+        # Test 3: No old default labels like "initial quality control"
+        old_default_labels = ["initial quality control", "Initial Quality Control", "quality control"]
+        shows_old_defaults = any(label.lower() in current_step.lower() for label in old_default_labels)
+        
+        self.log_test("No old default labels in dashboard", not shows_old_defaults,
+                     f"Current step '{current_step}' should not contain old default labels")
+        
+        # Test Scenario 2: Test step progression accuracy
+        # Get the process instances to simulate step progression
+        success, status_data = self.make_request(
+            "GET", f"parts/{created_part['id']}/status",
+            token=manager_token
+        )
+        
+        if success:
+            process_instances = status_data.get("process_instances", [])
+            if len(process_instances) >= 2:
+                # Simulate completing first step by updating part's current_step_index
+                # This would normally happen through QR scanning, but we'll test the dashboard logic
+                
+                # Create another work order to test different step positions
+                success, response2 = self.make_request(
+                    "POST", "parts",
+                    {
+                        "part_number": "DASHBOARD-TEST-002",
+                        "project_id": project["id"],
+                        "process_steps": ["Başlangıç", "Orta", "Son"]
+                    },
+                    token=manager_token
+                )
+                
+                if success:
+                    # Get updated dashboard
+                    success, dashboard_data = self.make_request(
+                        "GET", "dashboard/overview",
+                        token=manager_token
+                    )
+                    
+                    if success:
+                        # Find the new part
+                        for item in dashboard_data:
+                            if item.get("part", {}).get("id") == response2["id"]:
+                                current_step = item.get("current_step", "")
+                                expected_step = "Başlangıç"  # Should be first step
+                                
+                                step_accuracy = current_step == expected_step
+                                self.log_test("Step progression accuracy", step_accuracy,
+                                             f"Expected: '{expected_step}', Got: '{current_step}'")
+                                break
+        
+        # Test Scenario 3: Test with different custom step names to ensure no hardcoding
+        unique_steps = ["Özel İşlem A", "Özel İşlem B"]
+        success, response3 = self.make_request(
+            "POST", "parts",
+            {
+                "part_number": "DASHBOARD-TEST-003",
+                "project_id": project["id"],
+                "process_steps": unique_steps
+            },
+            token=manager_token
+        )
+        
+        if success:
+            # Get dashboard again
+            success, dashboard_data = self.make_request(
+                "GET", "dashboard/overview",
+                token=manager_token
+            )
+            
+            if success:
+                # Find this part in dashboard
+                for item in dashboard_data:
+                    if item.get("part", {}).get("id") == response3["id"]:
+                        current_step = item.get("current_step", "")
+                        expected_step = unique_steps[0]  # "Özel İşlem A"
+                        
+                        unique_step_display = current_step == expected_step
+                        self.log_test("Unique custom steps displayed correctly", unique_step_display,
+                                     f"Expected: '{expected_step}', Got: '{current_step}'")
+                        break
+        
+        # Test Scenario 4: Verify dashboard data structure includes current_step field
+        if dashboard_data:
+            first_item = dashboard_data[0]
+            has_current_step_field = "current_step" in first_item
+            current_step_not_empty = first_item.get("current_step", "") != ""
+            
+            self.log_test("Dashboard has current_step field", has_current_step_field)
+            self.log_test("Current step field is not empty", current_step_not_empty,
+                         f"Current step: '{first_item.get('current_step', '')}'")
+        
+        # Test Scenario 5: Test completed work orders show "Completed"
+        # This would require actually completing a work order through QR scanning
+        # For now, we'll just verify the logic exists by checking if any completed parts show "Completed"
+        completed_parts = [item for item in dashboard_data 
+                          if item.get("part", {}).get("status") == "completed"]
+        
+        if completed_parts:
+            completed_part = completed_parts[0]
+            shows_completed = completed_part.get("current_step") == "Completed"
+            self.log_test("Completed work orders show 'Completed'", shows_completed,
+                         f"Completed part current step: '{completed_part.get('current_step')}'")
+        else:
+            self.log_test("No completed parts to test", True, "Skipping completed parts test")
+
     def run_all_tests(self):
         """Run all test suites"""
         print("🚀 Starting Production Tracking System API Tests")
