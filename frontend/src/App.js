@@ -783,10 +783,10 @@ const Projects = () => {
       if (deleteItemType === 'project') {
         await axios.delete(`${API}/projects/${deleteSelectedId}`);
         fetchProjects();
-        fetchParts(); // Refresh parts as well since they might be affected
+        fetchProjectsWithParts(); // Refresh projects with parts as well since they might be affected
       } else {
         await axios.delete(`${API}/parts/${deleteSelectedId}`);
-        fetchParts();
+        fetchProjectsWithParts();
       }
       
       setShowDeleteConfirm(false);
