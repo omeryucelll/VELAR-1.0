@@ -845,9 +845,13 @@ const Projects = () => {
         <CardContent>
           <form onSubmit={createPart} className="space-y-4">
             <div>
+              <div className="mb-2">
+                <label className="text-sm font-medium text-white">Proje Seçin</label>
+                <p className="text-xs text-gray-400">İş emri mutlaka bir projeye bağlı olmalıdır</p>
+              </div>
               <Select value={selectedProject} onValueChange={setSelectedProject}>
                 <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                  <SelectValue placeholder="Select Project" />
+                  <SelectValue placeholder="Proje Seçin" />
                 </SelectTrigger>
                 <SelectContent>
                   {projects.map(project => (
