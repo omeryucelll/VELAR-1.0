@@ -219,17 +219,17 @@ backend:
         agent: "testing"
         comment: "QR code generation working correctly. Proper start/end QR codes generated for all process steps with base64 encoded images."
 
-  - task: "Dashboard Overview"
+  - task: "Dashboard Current Step Display Bug"
     implemented: true
-    working: true
+    working: false
     file: "backend/server.py"
     stuck_count: 0
-    priority: "low"
-    needs_retesting: false
+    priority: "high"
+    needs_retesting: true
     status_history:
-      - working: true
-        agent: "testing"
-        comment: "Dashboard endpoint working correctly, returning proper data structure with parts, projects, and current step information."
+      - working: false
+        agent: "main"
+        comment: "Fixed dashboard bug where current_step was incorrectly showing project's default steps instead of actual custom steps from process instances. Updated dashboard logic to fetch current step from actual process instances."
 
 frontend:
   - task: "Work Order Creation Frontend Logic"
