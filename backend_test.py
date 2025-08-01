@@ -130,7 +130,7 @@ class ProductionTrackingAPITester:
                 self.test_data["project"] = test_project
 
         if test_project:
-            self.log_test("Found test project", True, f"ID: {test_project['id']}")
+            self.log_test("Found test project", True, f"ID: {test_project['id']}, Name: {test_project['name']}")
             
             # Test get specific project
             success, project_detail = self.make_request(
@@ -145,7 +145,7 @@ class ProductionTrackingAPITester:
                 steps_match = len(steps) == 5
                 self.log_test("Project has 5 process steps", steps_match, f"Steps: {steps}")
         else:
-            self.log_test("Find test project", False, "Metal Parts Production Line Alpha not found")
+            self.log_test("Find test project", False, "No suitable project found")
 
     def test_parts(self):
         """Test parts endpoints"""
