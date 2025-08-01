@@ -269,3 +269,5 @@ test_plan:
 agent_communication:
   - agent: "testing"
     message: "Comprehensive backend testing completed. All authentication functionality working correctly with specified user accounts. 26/27 tests passed - only one minor error code issue (403 vs 401) which doesn't affect functionality. All critical features operational: user login, JWT tokens, role-based access, project/parts management, QR scanning workflow."
+  - agent: "main"
+    message: "Fixed work order creation issues: Modified backend to accept custom process_steps for work orders, updated frontend to require both project and step selection, removed auto-project creation logic. Need to test the new work order creation workflow with custom steps."
