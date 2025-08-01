@@ -65,11 +65,11 @@ async def setup_updated_users():
                 project_id = project["id"]
                 print(f"✓ Created project: {project['name']}")
                 
-                # Create test parts
+                # Create test parts with custom process steps
                 parts = [
-                    {"part_number": "MP-001-A", "project_id": project_id},
-                    {"part_number": "MP-002-B", "project_id": project_id},
-                    {"part_number": "MP-003-C", "project_id": project_id}
+                    {"part_number": "MP-001-A", "project_id": project_id, "process_steps": ["Initial Quality Control", "Machining (CNC)", "Welding", "Painting", "Final Quality Control"]},
+                    {"part_number": "MP-002-B", "project_id": project_id, "process_steps": ["Initial Quality Control", "Machining (CNC)", "Welding", "Painting", "Final Quality Control"]},
+                    {"part_number": "MP-003-C", "project_id": project_id, "process_steps": ["Initial Quality Control", "Machining (CNC)", "Welding", "Painting", "Final Quality Control"]}
                 ]
                 
                 for part_data in parts:
