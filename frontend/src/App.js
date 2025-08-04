@@ -8,7 +8,8 @@ import { Input } from './components/ui/input';
 import { Badge } from './components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
-import { QrCode, Factory, Scan, Users, BarChart3, Settings, LogOut, Camera, CheckCircle, Clock, Play, Pause, Plus, X, ChevronUp, ChevronDown, List, Database } from 'lucide-react';
+import { QrCode, Factory, Scan, Users, BarChart3, Settings, LogOut, Camera, CheckCircle, Clock, Play, Pause, Plus, X, ChevronUp, ChevronDown, List, Database, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -1424,6 +1425,94 @@ const QRCodes = () => {
     }
   };
 
+  const exportToPDF = async () => {
+    if (qrCodes.length === 0) return;
+
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - 2 * margin;
+    
+    // Title
+    pdf.setFontSize(20);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('QR Codes Export', margin, margin + 10);
+    
+    let currentY = margin + 30;
+    
+    for (let i = 0; i < qrCodes.length; i++) {
+      const qrData = qrCodes[i];
+      
+      // Check if we need a new page
+      if (currentY > pageHeight - 80) {
+        pdf.addPage();
+        currentY = margin;
+      }
+      
+      // Step name and status
+      pdf.setFontSize(16);
+      pdf.setFont(undefined, 'bold');
+      pdf.text(`${qrData.step_name}`, margin, currentY);
+      
+      pdf.setFontSize(12);
+      pdf.setFont(undefined, 'normal');
+      pdf.text(`Status: ${qrData.status.replace('_', ' ').toUpperCase()}`, margin, currentY + 8);
+      
+      currentY += 20;
+      
+      // QR Codes side by side
+      const qrSize = 40;
+      const qrSpacing = contentWidth / 2;
+      
+      try {
+        // START QR Code
+        pdf.setFontSize(12);
+        pdf.setFont(undefined, 'bold');
+        pdf.text('START QR Code', margin, currentY);
+        
+        // Convert base64 image to add to PDF
+        if (qrData.start_qr.image) {
+          pdf.addImage(qrData.start_qr.image, 'PNG', margin, currentY + 5, qrSize, qrSize);
+        }
+        
+        pdf.setFontSize(8);
+        pdf.setFont(undefined, 'normal');
+        const startCodeLines = pdf.splitTextToSize(qrData.start_qr.code, qrSize);
+        pdf.text(startCodeLines, margin, currentY + qrSize + 10);
+        
+        // END QR Code
+        pdf.setFontSize(12);
+        pdf.setFont(undefined, 'bold');
+        pdf.text('END QR Code', margin + qrSpacing, currentY);
+        
+        if (qrData.end_qr.image) {
+          pdf.addImage(qrData.end_qr.image, 'PNG', margin + qrSpacing, currentY + 5, qrSize, qrSize);
+        }
+        
+        pdf.setFontSize(8);
+        pdf.setFont(undefined, 'normal');
+        const endCodeLines = pdf.splitTextToSize(qrData.end_qr.code, qrSize);
+        pdf.text(endCodeLines, margin + qrSpacing, currentY + qrSize + 10);
+        
+        currentY += qrSize + 25;
+        
+      } catch (error) {
+        console.error('Error adding QR code to PDF:', error);
+        currentY += 20;
+      }
+      
+      // Add some spacing between different steps
+      if (i < qrCodes.length - 1) {
+        currentY += 10;
+      }
+    }
+    
+    // Save the PDF
+    const selectedPartName = parts.find(part => part.id === selectedPart)?.part_number || 'QRCodes';
+    pdf.save(`${selectedPartName}_QRCodes.pdf`);
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-white">QR Codes</h2>
@@ -1450,6 +1539,18 @@ const QRCodes = () => {
       
       {loading && (
         <div className="text-center text-white">Loading QR codes...</div>
+      )}
+      
+      {qrCodes.length > 0 && (
+        <div className="flex justify-end">
+          <Button 
+            onClick={exportToPDF}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export as PDF
+          </Button>
+        </div>
       )}
       
       <div className="grid gap-6">
