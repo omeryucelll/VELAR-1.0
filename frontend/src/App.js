@@ -1424,15 +1424,19 @@ const MainApp = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-2">
-              <Factory className="h-8 w-8 text-blue-400" />
-              <span className="text-xl font-bold text-white">Production Tracker</span>
+              <img 
+                src="https://customer-assets.emergentagent.com/job_metalops/artifacts/i1dybgg7_Velar%20Makine%20Logo%20SVG.png" 
+                alt="Velar Makine Logo" 
+                className="h-8 w-8 object-contain"
+              />
+              <span className="text-xl font-bold text-white">Velar Makine Üretim Takip Sistemi</span>
             </div>
             
             <div className="flex items-center gap-4">
               <Badge className="bg-blue-600/20 text-blue-300 border-blue-600/30">
-                {user?.role?.toUpperCase()}
+                {user?.role?.toUpperCase() || 'USER'}
               </Badge>
-              <span className="text-gray-300">Welcome, {user?.username}</span>
+              <span className="text-gray-300">Merhaba, {user?.username}</span>
               <Button 
                 onClick={logout} 
                 variant="outline" 
