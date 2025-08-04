@@ -144,10 +144,13 @@ const OperatorScanner = () => {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState('');
   const [manualMode, setManualMode] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingQrCode, setPendingQrCode] = useState('');
   const { user, logout } = React.useContext(AuthContext);
   
   const videoRef = React.useRef(null);
   const qrScannerRef = React.useRef(null);
+  const isDialogShowing = React.useRef(false);
 
   // Initialize QR Scanner
   React.useEffect(() => {
@@ -163,10 +166,17 @@ const OperatorScanner = () => {
           qrScannerRef.current = new QrScanner(
             videoRef.current,
             (result) => {
-              setQrCode(result.data);
-              // Auto-process the scan if we have a result
-              if (result.data) {
-                handleAutoScan(result.data);
+              // Only process if no dialog is currently showing
+              if (result.data && !isDialogShowing.current) {
+                isDialogShowing.current = true;
+                setQrCode(result.data);
+                setPendingQrCode(result.data);
+                setShowConfirmDialog(true);
+                // Pause scanning while showing confirmation dialog
+                if (qrScannerRef.current) {
+                  qrScannerRef.current.stop();
+                  setCameraActive(false);
+                }
               }
             },
             {
@@ -247,23 +257,23 @@ const OperatorScanner = () => {
 
       setResult(response.data);
       
-      // Stop camera briefly after successful scan
-      stopCamera();
-      
       // Auto-clear result and restart camera after 3 seconds
       setTimeout(() => {
         setResult(null);
         setQrCode('');
-        if (!manualMode) {
+        if (!manualMode && !isDialogShowing.current) {
           startCamera();
         }
       }, 3000);
     } catch (error) {
       setError(error.response?.data?.detail || 'Scan failed');
       
-      // Auto-clear error after 5 seconds
+      // Auto-clear error and restart camera after 5 seconds
       setTimeout(() => {
         setError('');
+        if (!manualMode && !isDialogShowing.current) {
+          startCamera();
+        }
       }, 5000);
     }
 
@@ -276,6 +286,26 @@ const OperatorScanner = () => {
     if (!qrCode.trim()) return;
     
     await handleAutoScan(qrCode);
+  };
+
+  // Handle confirmation dialog - Yes button
+  const handleConfirmScan = async () => {
+    setShowConfirmDialog(false);
+    isDialogShowing.current = false;
+    await handleAutoScan(pendingQrCode);
+    setPendingQrCode('');
+  };
+
+  // Handle confirmation dialog - No button
+  const handleCancelScan = () => {
+    setShowConfirmDialog(false);
+    isDialogShowing.current = false;
+    setPendingQrCode('');
+    setQrCode('');
+    // Resume scanning
+    if (!manualMode) {
+      startCamera();
+    }
   };
 
   return (
@@ -484,6 +514,57 @@ const OperatorScanner = () => {
                 </div>
               )}
             </CardContent>
+
+            {/* Confirmation Dialog */}
+            {showConfirmDialog && (
+              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-6 w-full max-w-sm animate-in fade-in zoom-in duration-300">
+                  <div className="text-center mb-6">
+                    <div className="mx-auto mb-4 p-3 bg-blue-600/20 rounded-full w-fit">
+                      <QrCode className="h-8 w-8 text-blue-400" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2">QR Kod Tespit Edildi</h3>
+                    <p className="text-gray-300 text-sm mb-4">Bu kod işlemi yapılsın mı?</p>
+                    <div className="bg-white/5 rounded-lg p-3 mb-4">
+                      <p className="text-xs text-gray-400 mb-1">Tespit edilen kod:</p>
+                      <p className="text-white font-mono text-sm break-all">{pendingQrCode}</p>
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      İşlem türü: {scanType === 'start' ? '▶️ Başlat' : '⏹️ Bitir'}
+                    </p>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={handleCancelScan}
+                      variant="outline"
+                      className="flex-1 border-white/20 text-white hover:bg-white/10 h-12"
+                      disabled={loading}
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Hayır
+                    </Button>
+                    <Button
+                      onClick={handleConfirmScan}
+                      className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 h-12"
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+                          İşleniyor...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Evet
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </Card>
         </div>
       </div>
