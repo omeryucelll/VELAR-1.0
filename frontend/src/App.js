@@ -8,7 +8,7 @@ import { Input } from './components/ui/input';
 import { Badge } from './components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
-import { QrCode, Factory, Scan, Users, BarChart3, Settings, LogOut, Camera, CheckCircle, Clock, Play, Pause, Plus, X, ChevronUp, ChevronDown, List } from 'lucide-react';
+import { QrCode, Factory, Scan, Users, BarChart3, Settings, LogOut, Camera, CheckCircle, Clock, Play, Pause, Plus, X, ChevronUp, ChevronDown, List, Database } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -1489,6 +1489,123 @@ const QRCodes = () => {
   );
 };
 
+// Veriler (Data) Component - Manager Only
+const Veriler = () => {
+  const [durationData, setDurationData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchDurationData();
+  }, []);
+
+  const fetchDurationData = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await axios.get(`${API}/veriler`);
+      setDurationData(response.data);
+    } catch (error) {
+      console.error('Failed to fetch duration data:', error);
+      if (error.response?.status === 403) {
+        setError('Bu sayfaya erişim yetkiniz bulunmamaktadır. Sadece yöneticiler bu verileri görüntüleyebilir.');
+      } else {
+        setError('Veri yüklenirken bir hata oluştu.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDuration = (minutes) => {
+    if (minutes < 1) {
+      return `${Math.round(minutes * 60)} saniye`;
+    }
+    return `${minutes.toFixed(1)} dakika`;
+  };
+
+  const formatDateTime = (dateString) => {
+    return new Date(dateString).toLocaleString('tr-TR');
+  };
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">Veriler</h2>
+        <Card className="bg-red-500/10 backdrop-blur-lg border-red-500/20">
+          <CardContent className="pt-6">
+            <p className="text-red-300 text-center">{error}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">Veriler</h2>
+        <Button 
+          onClick={fetchDurationData} 
+          disabled={loading}
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          {loading ? 'Yenileniyor...' : 'Verileri Yenile'}
+        </Button>
+      </div>
+      
+      <Card className="bg-white/5 backdrop-blur-lg border-white/10">
+        <CardHeader>
+          <CardTitle className="text-white">İşlem Süreleri</CardTitle>
+          <CardDescription className="text-gray-300">
+            Her işlem için QR kod tarama başlangıç ve bitiş süreleri arasındaki fark
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center text-white py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+              Veriler yükleniyor...
+            </div>
+          ) : durationData.length === 0 ? (
+            <div className="text-center text-gray-400 py-8">
+              Henüz tamamlanmış işlem verisi bulunmuyor.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {durationData.map((item) => (
+                <Card key={item.id} className="bg-white/5 border-white/10">
+                  <CardContent className="pt-4">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="text-white font-medium mb-2">{item.step_name}</h4>
+                        <div className="space-y-1 text-sm text-gray-300">
+                          <p><span className="text-gray-400">Proje:</span> {item.project_name}</p>
+                          <p><span className="text-gray-400">Parça No:</span> {item.part_number}</p>
+                          <p><span className="text-gray-400">Operatör:</span> {item.operator_name}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-green-400 mb-2">
+                          Bu işlem {formatDuration(item.duration_minutes)} sürmüştür.
+                        </div>
+                        <div className="space-y-1 text-xs text-gray-400">
+                          <p>Başlangıç: {formatDateTime(item.start_time)}</p>
+                          <p>Bitiş: {formatDateTime(item.end_time)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
 // Main App Component with Role-Based Interface
 const MainApp = () => {
   const { user, logout } = React.useContext(AuthContext);
@@ -1534,7 +1651,7 @@ const MainApp = () => {
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs defaultValue="scanner" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-white/10 backdrop-blur-lg">
+          <TabsList className={`grid w-full ${(user?.role === 'manager' || user?.role === 'admin') ? 'grid-cols-5' : 'grid-cols-4'} bg-white/10 backdrop-blur-lg`}>
             <TabsTrigger value="scanner" className="data-[state=active]:bg-white/20">
               <Scan className="h-4 w-4 mr-2" />
               Scanner
@@ -1551,6 +1668,12 @@ const MainApp = () => {
               <QrCode className="h-4 w-4 mr-2" />
               QR Codes
             </TabsTrigger>
+            {(user?.role === 'manager' || user?.role === 'admin') && (
+              <TabsTrigger value="veriler" className="data-[state=active]:bg-white/20">
+                <Database className="h-4 w-4 mr-2" />
+                Veriler
+              </TabsTrigger>
+            )}
           </TabsList>
           
           <TabsContent value="scanner">
@@ -1567,6 +1690,10 @@ const MainApp = () => {
           
           <TabsContent value="qrcodes">
             <QRCodes />
+          </TabsContent>
+          
+          <TabsContent value="veriler">
+            <Veriler />
           </TabsContent>
         </Tabs>
       </div>
