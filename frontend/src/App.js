@@ -8,7 +8,9 @@ import { Input } from './components/ui/input';
 import { Badge } from './components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
-import { QrCode, Factory, Scan, Users, BarChart3, Settings, LogOut, Camera, CheckCircle, Clock, Play, Pause, Plus, X, ChevronUp, ChevronDown, List, Database } from 'lucide-react';
+import { QrCode, Factory, Scan, Users, BarChart3, Settings, LogOut, Camera, CheckCircle, Clock, Play, Pause, Plus, X, ChevronUp, ChevronDown, List, Database, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -1389,6 +1391,8 @@ const QRCodes = () => {
   const [selectedPart, setSelectedPart] = useState('');
   const [qrCodes, setQrCodes] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const qrCodesRef = React.useRef();
 
   useEffect(() => {
     fetchParts();
@@ -1424,6 +1428,52 @@ const QRCodes = () => {
     }
   };
 
+  const exportToPDF = async () => {
+    if (!qrCodesRef.current || qrCodes.length === 0) return;
+
+    setExportLoading(true);
+    try {
+      const canvas = await html2canvas(qrCodesRef.current, {
+        backgroundColor: '#1e293b', // Match the dark background
+        scale: 2, // Higher resolution
+        useCORS: true,
+        allowTaint: true,
+        height: qrCodesRef.current.scrollHeight,
+        width: qrCodesRef.current.scrollWidth
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 295; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // Add first page
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      // Add additional pages if content is longer than one page
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      // Get the selected part name for filename
+      const selectedPartName = parts.find(part => part.id === selectedPart)?.part_number || 'QR-Codes';
+      pdf.save(`${selectedPartName}-QR-Codes.pdf`);
+    } catch (error) {
+      console.error('Failed to export PDF:', error);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-white">QR Codes</h2>
@@ -1432,7 +1482,7 @@ const QRCodes = () => {
         <CardHeader>
           <CardTitle className="text-white">Generate QR Codes</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <Select value={selectedPart} onValueChange={handlePartChange}>
             <SelectTrigger className="bg-white/10 border-white/20 text-white">
               <SelectValue placeholder="Select Part" />
@@ -1445,6 +1495,17 @@ const QRCodes = () => {
               ))}
             </SelectContent>
           </Select>
+          
+          {qrCodes.length > 0 && (
+            <Button 
+              onClick={exportToPDF}
+              disabled={exportLoading}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {exportLoading ? 'Exporting...' : 'Export as PDF'}
+            </Button>
+          )}
         </CardContent>
       </Card>
       
@@ -1452,7 +1513,7 @@ const QRCodes = () => {
         <div className="text-center text-white">Loading QR codes...</div>
       )}
       
-      <div className="grid gap-6">
+      <div ref={qrCodesRef} className="grid gap-6">
         {qrCodes.map((qrData, index) => (
           <Card key={index} className="bg-white/5 backdrop-blur-lg border-white/10">
             <CardHeader>
