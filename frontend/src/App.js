@@ -1492,12 +1492,59 @@ const QRCodes = () => {
 // Veriler (Data) Component - Manager Only
 const Veriler = () => {
   const [durationData, setDurationData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [parts, setParts] = useState([]);
+  const [selectedProject, setSelectedProject] = useState('');
+  const [selectedPart, setSelectedPart] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [loadingParts, setLoadingParts] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    fetchProjects();
     fetchDurationData();
   }, []);
+
+  useEffect(() => {
+    if (selectedProject) {
+      fetchProjectParts(selectedProject);
+      setSelectedPart(''); // Reset part selection when project changes
+    } else {
+      setParts([]);
+      setSelectedPart('');
+    }
+  }, [selectedProject]);
+
+  useEffect(() => {
+    filterData();
+  }, [durationData, selectedProject, selectedPart]);
+
+  const fetchProjects = async () => {
+    setLoadingProjects(true);
+    try {
+      const response = await axios.get(`${API}/projects`);
+      setProjects(response.data);
+    } catch (error) {
+      console.error('Failed to fetch projects:', error);
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
+  const fetchProjectParts = async (projectId) => {
+    setLoadingParts(true);
+    try {
+      const response = await axios.get(`${API}/projects/${projectId}/parts`);
+      setParts(response.data);
+    } catch (error) {
+      console.error('Failed to fetch project parts:', error);
+      setParts([]);
+    } finally {
+      setLoadingParts(false);
+    }
+  };
 
   const fetchDurationData = async () => {
     setLoading(true);
@@ -1515,6 +1562,28 @@ const Veriler = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const filterData = () => {
+    if (!selectedProject || !selectedPart) {
+      setFilteredData([]);
+      return;
+    }
+
+    const selectedProjectData = projects.find(p => p.id === selectedProject);
+    const selectedPartData = parts.find(p => p.id === selectedPart);
+
+    if (!selectedProjectData || !selectedPartData) {
+      setFilteredData([]);
+      return;
+    }
+
+    const filtered = durationData.filter(item => 
+      item.project_name === selectedProjectData.name && 
+      item.part_number === selectedPartData.part_number
+    );
+
+    setFilteredData(filtered);
   };
 
   const formatDuration = (minutes) => {
@@ -1553,12 +1622,84 @@ const Veriler = () => {
           {loading ? 'Yenileniyor...' : 'Verileri Yenile'}
         </Button>
       </div>
+
+      {/* Filter Controls */}
+      <Card className="bg-white/5 backdrop-blur-lg border-white/10">
+        <CardHeader>
+          <CardTitle className="text-white">Filtreler</CardTitle>
+          <CardDescription className="text-gray-300">
+            Proje ve iş emri seçerek verileri filtreleyebilirsiniz
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-2 gap-4">
+            {/* Project Dropdown */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-300">Proje Seçin</label>
+              <select
+                value={selectedProject}
+                onChange={(e) => setSelectedProject(e.target.value)}
+                disabled={loadingProjects}
+                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">
+                  {loadingProjects ? 'Projeler yükleniyor...' : 'Proje seçin'}
+                </option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id} className="bg-gray-800 text-white">
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Work Order (Part) Dropdown */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-300">İş Emri Seçin</label>
+              <select
+                value={selectedPart}
+                onChange={(e) => setSelectedPart(e.target.value)}
+                disabled={!selectedProject || loadingParts}
+                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+              >
+                <option value="">
+                  {!selectedProject 
+                    ? 'Önce proje seçin' 
+                    : loadingParts 
+                      ? 'İş emirleri yükleniyor...' 
+                      : 'İş emri seçin'
+                  }
+                </option>
+                {parts.map((part) => (
+                  <option key={part.id} value={part.id} className="bg-gray-800 text-white">
+                    {part.part_number}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {selectedProject && selectedPart && (
+            <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-md">
+              <p className="text-blue-300 text-sm">
+                <span className="font-medium">Seçili Proje:</span> {projects.find(p => p.id === selectedProject)?.name}
+                <span className="mx-2">•</span>
+                <span className="font-medium">Seçili İş Emri:</span> {parts.find(p => p.id === selectedPart)?.part_number}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
       
+      {/* Data Display */}
       <Card className="bg-white/5 backdrop-blur-lg border-white/10">
         <CardHeader>
           <CardTitle className="text-white">İşlem Süreleri</CardTitle>
           <CardDescription className="text-gray-300">
-            Her işlem için QR kod tarama başlangıç ve bitiş süreleri arasındaki fark
+            {selectedProject && selectedPart 
+              ? 'Seçili proje ve iş emri için QR kod tarama başlangıç ve bitiş süreleri arasındaki fark'
+              : 'Verileri görüntülemek için yukarıdan proje ve iş emri seçin'
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -1567,13 +1708,29 @@ const Veriler = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
               Veriler yükleniyor...
             </div>
-          ) : durationData.length === 0 ? (
+          ) : !selectedProject || !selectedPart ? (
             <div className="text-center text-gray-400 py-8">
-              Henüz tamamlanmış işlem verisi bulunmuyor.
+              <div className="mb-4">
+                <svg className="w-16 h-16 mx-auto text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+              </div>
+              <p className="text-lg font-medium mb-2">Filtre Seçimi Gerekli</p>
+              <p>Verileri görüntülemek için yukarıdan proje ve iş emri seçin.</p>
+            </div>
+          ) : filteredData.length === 0 ? (
+            <div className="text-center text-gray-400 py-8">
+              <div className="mb-4">
+                <svg className="w-16 h-16 mx-auto text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <p className="text-lg font-medium mb-2">Veri Bulunamadı</p>
+              <p>Seçili proje ve iş emri için henüz tamamlanmış işlem verisi bulunmuyor.</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {durationData.map((item) => (
+              {filteredData.map((item) => (
                 <Card key={item.id} className="bg-white/5 border-white/10">
                   <CardContent className="pt-4">
                     <div className="grid md:grid-cols-2 gap-4">
