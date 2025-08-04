@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
@@ -8,7 +8,9 @@ import { Input } from './components/ui/input';
 import { Badge } from './components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
-import { QrCode, Factory, Scan, Users, BarChart3, Settings, LogOut, Camera, CheckCircle, Clock, Play, Pause, Plus, X, ChevronUp, ChevronDown, List, Database } from 'lucide-react';
+import { QrCode, Factory, Scan, Users, BarChart3, Settings, LogOut, Camera, CheckCircle, Clock, Play, Pause, Plus, X, ChevronUp, ChevronDown, List, Database, FileDown } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -1389,6 +1391,8 @@ const QRCodes = () => {
   const [selectedPart, setSelectedPart] = useState('');
   const [qrCodes, setQrCodes] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [exportingPDF, setExportingPDF] = useState(false);
+  const qrCodesContainerRef = useRef(null);
 
   useEffect(() => {
     fetchParts();
@@ -1424,6 +1428,108 @@ const QRCodes = () => {
     }
   };
 
+  const exportToPDF = async () => {
+    if (!qrCodes.length || !qrCodesContainerRef.current) return;
+    
+    setExportingPDF(true);
+    try {
+      // Create a temporary container for PDF generation
+      const tempContainer = document.createElement('div');
+      tempContainer.style.position = 'absolute';
+      tempContainer.style.left = '-9999px';
+      tempContainer.style.top = '0';
+      tempContainer.style.width = '210mm'; // A4 width
+      tempContainer.style.backgroundColor = 'white';
+      tempContainer.style.padding = '20px';
+      tempContainer.style.fontFamily = 'Arial, sans-serif';
+      document.body.appendChild(tempContainer);
+
+      // Create PDF content
+      let pdfContent = `
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #333; margin-bottom: 10px;">QR Codes Report</h1>
+          <p style="color: #666; margin: 0;">Generated on ${new Date().toLocaleDateString()}</p>
+        </div>
+      `;
+
+      qrCodes.forEach((qrData, index) => {
+        pdfContent += `
+          <div style="margin-bottom: 40px; page-break-inside: avoid;">
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+              <h2 style="color: #333; margin: 0 0 10px 0; font-size: 18px;">${qrData.step_name}</h2>
+              <span style="background: #28a745; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; text-transform: uppercase;">
+                ${qrData.status.replace('_', ' ')}
+              </span>
+            </div>
+            
+            <div style="display: flex; justify-content: space-around; align-items: center;">
+              <div style="text-align: center; flex: 1;">
+                <h3 style="color: #28a745; margin-bottom: 15px; font-size: 16px;">START QR Code</h3>
+                <div style="background: white; padding: 20px; border-radius: 8px; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                  <img src="${qrData.start_qr.image}" style="width: 120px; height: 120px; display: block;" />
+                </div>
+                <p style="font-size: 10px; color: #666; margin-top: 10px; word-break: break-all; max-width: 150px;">${qrData.start_qr.code}</p>
+              </div>
+              
+              <div style="text-align: center; flex: 1;">
+                <h3 style="color: #dc3545; margin-bottom: 15px; font-size: 16px;">END QR Code</h3>
+                <div style="background: white; padding: 20px; border-radius: 8px; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                  <img src="${qrData.end_qr.image}" style="width: 120px; height: 120px; display: block;" />
+                </div>
+                <p style="font-size: 10px; color: #666; margin-top: 10px; word-break: break-all; max-width: 150px;">${qrData.end_qr.code}</p>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      tempContainer.innerHTML = pdfContent;
+
+      // Convert to canvas
+      const canvas = await html2canvas(tempContainer, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      });
+
+      // Remove temporary container
+      document.body.removeChild(tempContainer);
+
+      // Create PDF
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // Add first page
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      // Add additional pages if needed
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      // Download PDF
+      const selectedPartName = parts.find(part => part.id === selectedPart)?.part_number || 'Unknown';
+      pdf.save(`QR_Codes_${selectedPartName}_${new Date().toISOString().split('T')[0]}.pdf`);
+      
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-white">QR Codes</h2>
@@ -1448,11 +1554,24 @@ const QRCodes = () => {
         </CardContent>
       </Card>
       
+      {qrCodes.length > 0 && (
+        <div className="flex justify-end">
+          <Button 
+            onClick={exportToPDF}
+            disabled={exportingPDF}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            {exportingPDF ? 'Generating PDF...' : 'Export as PDF'}
+          </Button>
+        </div>
+      )}
+      
       {loading && (
         <div className="text-center text-white">Loading QR codes...</div>
       )}
       
-      <div className="grid gap-6">
+      <div className="grid gap-6" ref={qrCodesContainerRef}>
         {qrCodes.map((qrData, index) => (
           <Card key={index} className="bg-white/5 backdrop-blur-lg border-white/10">
             <CardHeader>
